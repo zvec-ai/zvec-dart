@@ -21,9 +21,12 @@ env:
   ZVEC_VERSION: ${{ github.event.inputs.version }}
 
 jobs:
-  build:
-    name: Build native libraries (macOS)
-    runs-on: macos-14  # Apple Silicon for iOS + Android cross-compilation
+  # =========================================================================
+  # Build Android (arm64-v8a + armeabi-v7a) — runs in parallel with iOS
+  # =========================================================================
+  build-android:
+    name: Build Android
+    runs-on: macos-14
     steps:
       - name: Checkout with submodules
         uses: actions/checkout@v4
@@ -45,37 +48,78 @@ jobs:
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
 
-      # -----------------------------------------------------------------------
-      # Build Android (arm64-v8a + armeabi-v7a)
-      # -----------------------------------------------------------------------
       - name: Build Android arm64-v8a
         run: bash scripts/build_android.sh arm64-v8a 21 Release
 
       - name: Build Android armeabi-v7a
         run: bash scripts/build_android.sh armeabi-v7a 21 Release
 
-      # -----------------------------------------------------------------------
-      # Build iOS (arm64 device)
-      # -----------------------------------------------------------------------
+      - name: Verify Android artifacts
+        run: |
+          file android/src/main/jniLibs/arm64-v8a/libzvec.so
+          file android/src/main/jniLibs/armeabi-v7a/libzvec.so
+          ls -lh build/release/
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-libs
+          path: build/release/libzvec-android-*.zip
+
+  # =========================================================================
+  # Build iOS (arm64 device) — runs in parallel with Android
+  # =========================================================================
+  build-ios:
+    name: Build iOS
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
       - name: Build iOS arm64
         run: bash scripts/build_ios.sh OS Release
 
-      # -----------------------------------------------------------------------
-      # Verify artifacts
-      # -----------------------------------------------------------------------
-      - name: Verify build artifacts
+      - name: Verify iOS artifacts
         run: |
-          echo "=== Android ==="
-          file android/src/main/jniLibs/arm64-v8a/libzvec.so
-          file android/src/main/jniLibs/armeabi-v7a/libzvec.so
-          echo "=== iOS ==="
           file ios/zvec.framework/zvec
-          echo "=== Release zips ==="
           ls -lh build/release/
 
-      # -----------------------------------------------------------------------
-      # Create GitHub Release & upload zips
-      # -----------------------------------------------------------------------
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-libs
+          path: build/release/zvec-framework-ios.zip
+
+  # =========================================================================
+  # Create GitHub Release — waits for both builds to succeed
+  # =========================================================================
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-libs
+          path: artifacts/
+
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-libs
+          path: artifacts/
+
+      - name: Verify all artifacts
+        run: ls -lh artifacts/
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,8 +137,9 @@ jobs:
           EOF
 
           gh release create "v${ZVEC_VERSION}" \
-            build/release/libzvec-android-arm64-v8a.zip \
-            build/release/libzvec-android-armeabi-v7a.zip \
-            build/release/zvec-framework-ios.zip \
+            artifacts/libzvec-android-arm64-v8a.zip \
+            artifacts/libzvec-android-armeabi-v7a.zip \
+            artifacts/zvec-framework-ios.zip \
+            --repo "${{ github.repository }}" \
             --title "v${ZVEC_VERSION}" \
             --notes-file /tmp/release_notes.md
