@@ -48,6 +48,18 @@ jobs:
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
 
+      # Pre-build host protoc BEFORE build_android.sh, because the script
+      # exports CMAKE_TOOLCHAIN_FILE (Android) before building host protoc,
+      # causing protoc to be cross-compiled for Android and fail to execute.
+      - name: Pre-build host protoc
+        run: |
+          cd third_party/zvec
+          git submodule foreach --recursive 'git stash --include-untracked 2>/dev/null || true' > /dev/null 2>&1
+          cd $GITHUB_WORKSPACE
+          mkdir -p build/host && cd build/host
+          cmake -DCMAKE_BUILD_TYPE=Release "$GITHUB_WORKSPACE/third_party/zvec"
+          make -j$(sysctl -n hw.ncpu) protoc
+
       - name: Build Android arm64-v8a
         run: bash scripts/build_android.sh arm64-v8a 21 Release
 
