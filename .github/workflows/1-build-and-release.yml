@@ -22,14 +22,17 @@ env:
 
 jobs:
   # =========================================================================
-  # Build Android (per-ABI matrix) — runs in parallel with iOS
+  # Build Android — runs in parallel with iOS
+  #
+  # NOTE: armeabi-v7a is currently disabled. Upstream zvec cmake
+  # (cmake/option.cmake _setup_armv8_march) unconditionally appends
+  # -march=armv8 to CFLAGS, which conflicts with the NDK's -march=armv7-a
+  # for 32-bit ARM targets, causing lz4 and other thirdparty builds to fail.
+  # Re-enable when upstream fixes arch flag handling for armv7.
   # =========================================================================
   build-android:
-    name: Build Android (${{ matrix.abi }})
+    name: Build Android
     runs-on: macos-14
-    strategy:
-      matrix:
-        abi: [arm64-v8a, armeabi-v7a]
     steps:
       - name: Checkout with submodules
         uses: actions/checkout@v4
@@ -63,19 +66,19 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release "$GITHUB_WORKSPACE/third_party/zvec"
           make -j$(sysctl -n hw.ncpu) protoc
 
-      - name: Build Android ${{ matrix.abi }}
-        run: bash scripts/build_android.sh ${{ matrix.abi }} 21 Release
+      - name: Build Android arm64-v8a
+        run: bash scripts/build_android.sh arm64-v8a 21 Release
 
       - name: Verify Android artifacts
         run: |
-          file android/src/main/jniLibs/${{ matrix.abi }}/libzvec.so
+          file android/src/main/jniLibs/arm64-v8a/libzvec.so
           ls -lh build/release/
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{ matrix.abi }}
-          path: build/release/libzvec-android-${{ matrix.abi }}.zip
+          name: android-arm64-v8a
+          path: build/release/libzvec-android-arm64-v8a.zip
 
   # =========================================================================
   # Build iOS (arm64 device) — runs in parallel with Android
@@ -137,7 +140,6 @@ jobs:
           | Platform | ABI | File |
           |----------|-----|------|
           | Android | arm64-v8a | libzvec-android-arm64-v8a.zip |
-          | Android | armeabi-v7a | libzvec-android-armeabi-v7a.zip |
           | iOS | arm64 | zvec-framework-ios.zip |
 
           These binaries are automatically downloaded during `flutter build`.
@@ -145,7 +147,6 @@ jobs:
 
           gh release create "v${ZVEC_VERSION}" \
             artifacts/libzvec-android-arm64-v8a.zip \
-            artifacts/libzvec-android-armeabi-v7a.zip \
             artifacts/zvec-framework-ios.zip \
             --repo "${{ github.repository }}" \
             --title "v${ZVEC_VERSION}" \
