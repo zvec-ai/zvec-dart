@@ -50,6 +50,17 @@ jobs:
         with:
           cmake-version: '3.28'
 
+      - name: Get submodule hash for cache key
+        id: zvec-hash
+        run: echo "hash=$(git submodule status third_party/zvec | awk '{print $1}' | tr -d '-')" >> $GITHUB_OUTPUT
+
+      - name: Cache native build
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: build/macos
+          key: native-macos-${{ runner.arch }}-${{ steps.zvec-hash.outputs.hash }}
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -59,6 +70,7 @@ jobs:
         run: flutter pub get
 
       - name: Build macOS native library
+        if: steps.native-cache.outputs.cache-hit != 'true'
         run: bash scripts/build_macos.sh Release
 
       - name: Run native FFI tests
