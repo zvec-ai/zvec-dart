@@ -46,6 +46,14 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
 
       # -----------------------------------------------------------------------
+      # Debug: SSH into runner via tmate
+      # -----------------------------------------------------------------------
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+      # -----------------------------------------------------------------------
       # Build Android (arm64-v8a + armeabi-v7a)
       # -----------------------------------------------------------------------
       - name: Build Android arm64-v8a
