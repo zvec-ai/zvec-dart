@@ -22,11 +22,14 @@ env:
 
 jobs:
   # =========================================================================
-  # Build Android (arm64-v8a + armeabi-v7a) — runs in parallel with iOS
+  # Build Android (per-ABI matrix) — runs in parallel with iOS
   # =========================================================================
   build-android:
-    name: Build Android
+    name: Build Android (${{ matrix.abi }})
     runs-on: macos-14
+    strategy:
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a]
     steps:
       - name: Checkout with submodules
         uses: actions/checkout@v4
@@ -60,19 +63,19 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release "$GITHUB_WORKSPACE/third_party/zvec"
           make -j$(sysctl -n hw.ncpu) protoc
 
-      - name: Build Android arm64-v8a
-        run: bash scripts/build_android.sh arm64-v8a 21 Release
+      - name: Build Android ${{ matrix.abi }}
+        run: bash scripts/build_android.sh ${{ matrix.abi }} 21 Release
 
       - name: Verify Android artifacts
         run: |
-          file android/src/main/jniLibs/arm64-v8a/libzvec.so
+          file android/src/main/jniLibs/${{ matrix.abi }}/libzvec.so
           ls -lh build/release/
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-libs
-          path: build/release/libzvec-android-*.zip
+          name: android-${{ matrix.abi }}
+          path: build/release/libzvec-android-${{ matrix.abi }}.zip
 
   # =========================================================================
   # Build iOS (arm64 device) — runs in parallel with Android
@@ -115,17 +118,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Android artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: android-libs
           path: artifacts/
-
-      - name: Download iOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ios-libs
-          path: artifacts/
+          merge-multiple: true
 
       - name: Verify all artifacts
         run: ls -lh artifacts/
@@ -140,6 +137,7 @@ jobs:
           | Platform | ABI | File |
           |----------|-----|------|
           | Android | arm64-v8a | libzvec-android-arm64-v8a.zip |
+          | Android | armeabi-v7a | libzvec-android-armeabi-v7a.zip |
           | iOS | arm64 | zvec-framework-ios.zip |
 
           These binaries are automatically downloaded during `flutter build`.
@@ -147,6 +145,7 @@ jobs:
 
           gh release create "v${ZVEC_VERSION}" \
             artifacts/libzvec-android-arm64-v8a.zip \
+            artifacts/libzvec-android-armeabi-v7a.zip \
             artifacts/zvec-framework-ios.zip \
             --repo "${{ github.repository }}" \
             --title "v${ZVEC_VERSION}" \
