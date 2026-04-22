@@ -63,13 +63,9 @@ jobs:
       - name: Build Android arm64-v8a
         run: bash scripts/build_android.sh arm64-v8a 21 Release
 
-      - name: Build Android armeabi-v7a
-        run: bash scripts/build_android.sh armeabi-v7a 21 Release
-
       - name: Verify Android artifacts
         run: |
           file android/src/main/jniLibs/arm64-v8a/libzvec.so
-          file android/src/main/jniLibs/armeabi-v7a/libzvec.so
           ls -lh build/release/
 
       - name: Upload Android artifacts
@@ -142,7 +138,6 @@ jobs:
           | Platform | ABI | File |
           |----------|-----|------|
           | Android | arm64-v8a | libzvec-android-arm64-v8a.zip |
-          | Android | armeabi-v7a | libzvec-android-armeabi-v7a.zip |
           | iOS | arm64 | zvec-framework-ios.zip |
 
           These binaries are automatically downloaded during `flutter build`.
@@ -150,7 +145,6 @@ jobs:
 
           gh release create "v${ZVEC_VERSION}" \
             artifacts/libzvec-android-arm64-v8a.zip \
-            artifacts/libzvec-android-armeabi-v7a.zip \
             artifacts/zvec-framework-ios.zip \
             --repo "${{ github.repository }}" \
             --title "v${ZVEC_VERSION}" \
