@@ -33,8 +33,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
 
       - name: Verify version consistency
         run: |
@@ -56,7 +58,7 @@ jobs:
           echo "✅ Release assets verified."
 
       - name: Dry run
-        run: dart pub publish --dry-run
+        run: flutter pub publish --dry-run
 
       - name: Publish
-        run: dart pub publish --force
+        run: flutter pub publish --force
