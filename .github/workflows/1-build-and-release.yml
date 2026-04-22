@@ -112,6 +112,8 @@ jobs:
     name: Create GitHub Release
     needs: [build-android, build-ios]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download Android artifacts
         uses: actions/download-artifact@v4
