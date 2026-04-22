@@ -1,0 +1,65 @@
+# =============================================================================
+# Test Workflow — Run Dart unit tests on every push to main
+#
+# Runs both pure-Dart tests and native FFI tests (requires macOS dylib).
+# =============================================================================
+name: "Test"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # =========================================================================
+  # Pure-Dart unit tests (no native library needed)
+  # =========================================================================
+  dart-tests:
+    name: Dart unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run pure-Dart tests
+        run: flutter test test/zvec_test.dart
+
+  # =========================================================================
+  # Native FFI tests (requires building libzvec.dylib on macOS)
+  # =========================================================================
+  native-tests:
+    name: Native FFI tests
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS native library
+        run: bash scripts/build_macos.sh Release
+
+      - name: Run native FFI tests
+        run: bash scripts/run_tests.sh test/zvec_native_test.dart
