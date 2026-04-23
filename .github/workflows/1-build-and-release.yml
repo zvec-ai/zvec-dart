@@ -323,6 +323,13 @@ jobs:
           grep -A2 'zvec:' pubspec.yaml
           flutter pub get
 
+      - name: Generate iOS platform files
+        working-directory: example
+        run: |
+          flutter create --platforms=ios .
+          # zvec requires iOS 14.0+
+          sed -i '' "s/platform :ios, '.*'/platform :ios, '14.0'/" ios/Podfile
+
       - name: Build iOS (device, no codesign)
         working-directory: example
         run: flutter build ios --no-codesign

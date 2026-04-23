@@ -1,7 +1,12 @@
+## 0.1.4
+
+* Fix iOS: remove source_files from podspec to prevent CocoaPods overriding vendored framework.
+* Fix Android: remove unsupported armeabi-v7a from abiFilters and download list.
+* CI: merge build, publish, and verify into single workflow.
+
 ## 0.1.3
 
 * Fix native library download: podspec/build.gradle version now matches pubspec.yaml.
-* CI: merge build and publish into single workflow for OIDC compatibility.
 
 ## 0.1.2
 
