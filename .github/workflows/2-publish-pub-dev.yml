@@ -35,6 +35,9 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
+      - name: Setup Dart (for OIDC publishing)
+        uses: dart-lang/setup-dart@v1
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -76,7 +79,7 @@ jobs:
           git rm --cached third_party/zvec
 
       - name: Dry run
-        run: flutter pub publish --dry-run
+        run: dart pub publish --dry-run
 
       - name: Publish
-        run: flutter pub publish --force
+        run: dart pub publish --force
