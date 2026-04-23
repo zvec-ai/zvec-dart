@@ -21,56 +21,115 @@ env:
   ZVEC_VERSION: ${{ github.event.inputs.version }}
 
 jobs:
-  build:
-    name: Build native libraries (macOS)
-    runs-on: macos-14  # Apple Silicon for iOS + Android cross-compilation
+  # =========================================================================
+  # Build Android — runs in parallel with iOS
+  #
+  # NOTE: armeabi-v7a is currently disabled. Upstream zvec cmake
+  # (cmake/option.cmake _setup_armv8_march) unconditionally appends
+  # -march=armv8 to CFLAGS, which conflicts with the NDK's -march=armv7-a
+  # for 32-bit ARM targets, causing lz4 and other thirdparty builds to fail.
+  # Re-enable when upstream fixes arch flag handling for armv7.
+  # =========================================================================
+  build-android:
+    name: Build Android
+    runs-on: macos-14
     steps:
       - name: Checkout with submodules
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
       - name: Setup Android SDK & NDK
         uses: android-actions/setup-android@v3
 
       - name: Install NDK
-        run: sdkmanager --install "ndk;27.0.12077973"
+        run: sdkmanager --install "ndk;27.2.12479018"
 
       - name: Set NDK environment
         run: |
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
 
-      # -----------------------------------------------------------------------
-      # Build Android (arm64-v8a + armeabi-v7a)
-      # -----------------------------------------------------------------------
+      # Pre-build host protoc BEFORE build_android.sh, because the script
+      # exports CMAKE_TOOLCHAIN_FILE (Android) before building host protoc,
+      # causing protoc to be cross-compiled for Android and fail to execute.
+      - name: Pre-build host protoc
+        run: |
+          cd third_party/zvec
+          git submodule foreach --recursive 'git stash --include-untracked 2>/dev/null || true' > /dev/null 2>&1
+          cd $GITHUB_WORKSPACE
+          mkdir -p build/host && cd build/host
+          cmake -DCMAKE_BUILD_TYPE=Release "$GITHUB_WORKSPACE/third_party/zvec"
+          make -j$(sysctl -n hw.ncpu) protoc
+
       - name: Build Android arm64-v8a
         run: bash scripts/build_android.sh arm64-v8a 21 Release
 
-      - name: Build Android armeabi-v7a
-        run: bash scripts/build_android.sh armeabi-v7a 21 Release
+      - name: Verify Android artifacts
+        run: |
+          file android/src/main/jniLibs/arm64-v8a/libzvec.so
+          ls -lh build/release/
 
-      # -----------------------------------------------------------------------
-      # Build iOS (arm64 device)
-      # -----------------------------------------------------------------------
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-arm64-v8a
+          path: build/release/libzvec-android-arm64-v8a.zip
+
+  # =========================================================================
+  # Build iOS (arm64 device) — runs in parallel with Android
+  # =========================================================================
+  build-ios:
+    name: Build iOS
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
       - name: Build iOS arm64
         run: bash scripts/build_ios.sh OS Release
 
-      # -----------------------------------------------------------------------
-      # Verify artifacts
-      # -----------------------------------------------------------------------
-      - name: Verify build artifacts
+      - name: Verify iOS artifacts
         run: |
-          echo "=== Android ==="
-          file android/src/main/jniLibs/arm64-v8a/libzvec.so
-          file android/src/main/jniLibs/armeabi-v7a/libzvec.so
-          echo "=== iOS ==="
           file ios/zvec.framework/zvec
-          echo "=== Release zips ==="
           ls -lh build/release/
 
-      # -----------------------------------------------------------------------
-      # Create GitHub Release & upload zips
-      # -----------------------------------------------------------------------
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-libs
+          path: build/release/zvec-framework-ios.zip
+
+  # =========================================================================
+  # Create GitHub Release — waits for both builds to succeed
+  # =========================================================================
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: true
+
+      - name: Verify all artifacts
+        run: ls -lh artifacts/
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,15 +140,14 @@ jobs:
           | Platform | ABI | File |
           |----------|-----|------|
           | Android | arm64-v8a | libzvec-android-arm64-v8a.zip |
-          | Android | armeabi-v7a | libzvec-android-armeabi-v7a.zip |
           | iOS | arm64 | zvec-framework-ios.zip |
 
           These binaries are automatically downloaded during `flutter build`.
           EOF
 
           gh release create "v${ZVEC_VERSION}" \
-            build/release/libzvec-android-arm64-v8a.zip \
-            build/release/libzvec-android-armeabi-v7a.zip \
-            build/release/zvec-framework-ios.zip \
+            artifacts/libzvec-android-arm64-v8a.zip \
+            artifacts/zvec-framework-ios.zip \
+            --repo "${{ github.repository }}" \
             --title "v${ZVEC_VERSION}" \
             --notes-file /tmp/release_notes.md
