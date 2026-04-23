@@ -1,51 +1,61 @@
 # =============================================================================
 # Workflow #2: Publish Dart Package to pub.dev
 #
-# Manually triggered. Publishes the Dart package to pub.dev.
-# Prerequisite: Workflow #1 completed successfully, GitHub Release zips
-# are downloadable.
+# Automatically triggered after Workflow #1 (Build & Release) succeeds.
+# Publishes the Dart package to pub.dev using OIDC trusted publishing.
 #
 # One-time setup on pub.dev before first use:
 #   pub.dev → Package Admin → Enable automated publishing from GitHub Actions
 #   Repository: zvec-ai/zvec-dart
 #   Tag pattern: v{{version}}
 #
-# Trigger: GitHub Actions → Run workflow → Enter version
+# Trigger: Automatic (after Workflow #1 completes on a tag push)
 # =============================================================================
 name: "2 - Publish to pub.dev"
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish (e.g. 0.1.0, must match pubspec.yaml)"
-        required: true
-        type: string
+  workflow_run:
+    workflows: ["1 - Build & Release Native Libs"]
+    types: [completed]
 
 jobs:
   publish:
     name: Publish to pub.dev
     runs-on: ubuntu-latest
+    # Only run if Workflow #1 succeeded and was triggered by a tag push
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     permissions:
       id-token: write  # Required for OIDC authentication with pub.dev
 
     steps:
-      - name: Checkout
+      - name: Checkout at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG, Version: $VERSION"
+
       - name: Verify version consistency
         run: |
           PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          INPUT_VERSION="${{ github.event.inputs.version }}"
+          TAG_VERSION="${{ steps.version.outputs.version }}"
           echo "pubspec.yaml version: $PUBSPEC_VERSION"
-          echo "Input version:        $INPUT_VERSION"
-          if [ "$PUBSPEC_VERSION" != "$INPUT_VERSION" ]; then
-            echo "::error::Version mismatch! pubspec.yaml=$PUBSPEC_VERSION, input=$INPUT_VERSION"
+          echo "Tag version:          $TAG_VERSION"
+          if [ "$PUBSPEC_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch! pubspec.yaml=$PUBSPEC_VERSION, tag=$TAG_VERSION"
             exit 1
           fi
 
@@ -53,8 +63,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Checking GitHub Release v${{ github.event.inputs.version }} ..."
-          gh release view "v${{ github.event.inputs.version }}" --json assets --jq '.assets[].name'
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          echo "Checking GitHub Release $TAG ..."
+          gh release view "$TAG" --json assets --jq '.assets[].name'
           echo "✅ Release assets verified."
 
       - name: Dry run
