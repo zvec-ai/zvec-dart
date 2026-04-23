@@ -1,6 +1,6 @@
 name: zvec
 description: "Dart SDK for Zvec — a lightweight, lightning-fast, in-process vector database by Alibaba."
-version: 0.1.2
+version: 0.1.3
 homepage: https://github.com/alibaba/zvec
 
 environment:

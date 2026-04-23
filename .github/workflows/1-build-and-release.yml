@@ -214,3 +214,150 @@ jobs:
 
       - name: Publish
         run: dart pub publish --force
+
+  # =========================================================================
+  # Verify published package — install from pub.dev and build example app
+  #
+  # Waits for pub.dev indexing (~2 min), then builds example for both
+  # Android and iOS to verify native libraries are correctly bundled.
+  # =========================================================================
+  verify-android:
+    name: Verify Android (APK static check)
+    needs: [publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for example app)
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Wait for pub.dev indexing
+        run: sleep 120
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          cat > /tmp/fix_dep.py << PYEOF
+          import re, pathlib
+          p = pathlib.Path('pubspec.yaml')
+          txt = p.read_text()
+          txt = re.sub(
+              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
+              'zvec: ^${TAG_VERSION}\n',
+              txt
+          )
+          p.write_text(txt)
+          PYEOF
+          python3 /tmp/fix_dep.py
+          echo "Updated pubspec.yaml:"
+          grep -A2 'zvec:' pubspec.yaml
+          flutter pub get
+
+      - name: Build APK
+        working-directory: example
+        run: flutter build apk --debug
+
+      - name: Verify APK contents
+        working-directory: example
+        run: |
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          echo "=== APK size ==="
+          ls -lh "$APK"
+          echo ""
+          echo "=== Native libraries in APK ==="
+          unzip -l "$APK" | grep '\.so$'
+          echo ""
+          echo "=== Verify libzvec.so for arm64-v8a ==="
+          if unzip -l "$APK" | grep -q "lib/arm64-v8a/libzvec.so"; then
+            unzip -o -j "$APK" "lib/arm64-v8a/libzvec.so" -d /tmp/verify_arm64
+            FILE_INFO=$(file /tmp/verify_arm64/libzvec.so)
+            echo "arm64-v8a/libzvec.so — $FILE_INFO"
+            if echo "$FILE_INFO" | grep -q "ELF.*shared object"; then
+              echo "Format: valid ELF shared object"
+            else
+              echo "::error::Unexpected format for libzvec.so"
+              exit 1
+            fi
+          else
+            echo "::error::lib/arm64-v8a/libzvec.so NOT FOUND in APK"
+            exit 1
+          fi
+
+  verify-ios:
+    name: Verify iOS (device build, no codesign)
+    needs: [publish]
+    runs-on: macos-14
+    steps:
+      - name: Checkout (for example app)
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Wait for pub.dev indexing
+        run: sleep 120
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          cat > /tmp/fix_dep.py << PYEOF
+          import re, pathlib
+          p = pathlib.Path('pubspec.yaml')
+          txt = p.read_text()
+          txt = re.sub(
+              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
+              'zvec: ^${TAG_VERSION}\n',
+              txt
+          )
+          p.write_text(txt)
+          PYEOF
+          python3 /tmp/fix_dep.py
+          echo "Updated pubspec.yaml:"
+          grep -A2 'zvec:' pubspec.yaml
+          flutter pub get
+
+      - name: Build iOS (device, no codesign)
+        working-directory: example
+        run: flutter build ios --no-codesign
+
+      - name: Verify zvec.framework
+        working-directory: example
+        run: |
+          echo "=== Searching for zvec.framework ==="
+          FRAMEWORK=$(find build -name "zvec.framework" -type d | head -1)
+          if [ -z "$FRAMEWORK" ]; then
+            echo "::error::zvec.framework NOT found in build output"
+            exit 1
+          fi
+          echo "Found: $FRAMEWORK"
+          BINARY="$FRAMEWORK/zvec"
+          echo ""
+          echo "=== Architecture check ==="
+          lipo -info "$BINARY"
+          if lipo -info "$BINARY" | grep -q "arm64"; then
+            echo "arm64 architecture confirmed"
+          else
+            echo "::error::arm64 architecture NOT found in zvec.framework"
+            exit 1
+          fi
+
+  verify-summary:
+    name: Verification summary
+    needs: [verify-android, verify-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks passed
+        run: |
+          echo "============================================"
+          echo "  Package ${ZVEC_VERSION} fully verified!"
+          echo ""
+          echo "  Android: APK contains arm64-v8a libzvec.so (valid ELF)"
+          echo "  iOS:     zvec.framework present with arm64 architecture"
+          echo "============================================"

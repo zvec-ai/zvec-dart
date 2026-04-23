@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'zvec'
-  s.version          = '0.1.0'
+  s.version          = '0.1.3'
   s.summary          = 'Dart SDK for Zvec — a lightweight, lightning-fast, in-process vector database.'
   s.description      = <<-DESC
 Dart/Flutter SDK for Zvec, an embedded vector database by Alibaba.
@@ -16,21 +16,17 @@ on iOS and Android.
   s.author           = { 'Zvec Team' => 'zvec@alibaba-inc.com' }
 
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
   s.platform = :ios, '14.0'
 
-  # Dynamic framework — the dylib is a self-contained FAT binary built by
-  # zvec's CMake (zvec_c_api SHARED target).  All internal static libraries
-  # and factory registrations are already embedded via -Wl,-force_load at
-  # build time, so no force_load or extra archive is needed here.
+  # The native zvec library is provided as a prebuilt dynamic framework.
+  # No source compilation needed — all symbols are in the vendored binary.
   s.ios.vendored_framework = 'zvec.framework'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
   }
-  s.swift_version = '5.0'
 
   # ---------------------------------------------------------------------------
   # Download prebuilt zvec.framework from GitHub Releases if not present.

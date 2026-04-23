@@ -1,3 +1,8 @@
+## 0.1.3
+
+* Fix native library download: podspec/build.gradle version now matches pubspec.yaml.
+* CI: merge build and publish into single workflow for OIDC compatibility.
+
 ## 0.1.2
 
 * Incremental improvements and bug fixes.
