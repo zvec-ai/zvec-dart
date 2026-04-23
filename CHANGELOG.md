@@ -1,3 +1,8 @@
+## 0.1.5
+
+* Fix CI: iOS verify Podfile platform line was commented out by flutter create.
+* Fix CI: fetch submodule tags for correct native version detection.
+
 ## 0.1.4
 
 * Fix iOS: remove source_files from podspec to prevent CocoaPods overriding vendored framework.

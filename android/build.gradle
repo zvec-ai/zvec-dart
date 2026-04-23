@@ -1,13 +1,13 @@
 // The Android Gradle Plugin builds the native code with the Android NDK.
 
 group = "com.alibaba.zvec"
-version = "0.1.4"
+version = "0.1.5"
 
 // ---------------------------------------------------------------------------
 // Zvec native library version — update this when releasing a new version.
 // The prebuilt .so files are downloaded from GitHub Releases at build time.
 // ---------------------------------------------------------------------------
-def ZVEC_VERSION = "0.1.4"
+def ZVEC_VERSION = "0.1.5"
 def ZVEC_GITHUB_BASE = "https://github.com/zvec-ai/zvec-dart/releases/download/v${ZVEC_VERSION}"
 
 buildscript {
