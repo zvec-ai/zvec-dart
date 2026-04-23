@@ -68,6 +68,13 @@ jobs:
           gh release view "$TAG" --json assets --jq '.assets[].name'
           echo "✅ Release assets verified."
 
+      - name: Remove submodule gitlink for pub validation
+        run: |
+          # Workaround for dart pub bug (dart-lang/pub#3789):
+          # pub incorrectly warns about submodule gitlink entries being gitignored.
+          # Temporarily remove the gitlink from the index before publish.
+          git rm --cached third_party/zvec
+
       - name: Dry run
         run: flutter pub publish --dry-run
 
