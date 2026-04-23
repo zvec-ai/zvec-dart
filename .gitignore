@@ -27,6 +27,10 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 # Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
 /pubspec.lock
+
+# The zvec submodule is checked in and must NOT be gitignored.
+# (Excluded from pub.dev publishing via .pubignore instead.)
+!third_party/zvec
 **/doc/api/
 .dart_tool/
 .flutter-plugins-dependencies

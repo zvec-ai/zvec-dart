@@ -25,6 +25,7 @@ ios/zvec.framework/
 .git/
 .github/
 .gitmodules
+.gitignore
 .idea/
 .vscode/
 *.iml

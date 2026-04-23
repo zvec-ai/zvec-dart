@@ -1,3 +1,7 @@
+## 0.1.2
+
+* Incremental improvements and bug fixes.
+
 ## 0.1.0
 
 * Initial release of Zvec Dart SDK.
