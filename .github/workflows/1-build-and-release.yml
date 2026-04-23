@@ -1,17 +1,19 @@
 # =============================================================================
-# Workflow #1: Build Native Libraries & Upload to GitHub Releases
+# Workflow: Build Native Libraries, Create GitHub Release & Publish to pub.dev
 #
 # Triggered by pushing a version tag (e.g. v0.1.0). Compiles native
-# libraries for all platforms, packages them as zip files, and uploads
-# to GitHub Releases.
+# libraries for all platforms, packages them as zip files, uploads
+# to GitHub Releases, and publishes the Dart package to pub.dev.
 #
 # Prerequisites:
 #   - pubspec.yaml version matches the tag (e.g. tag v0.1.0 → version: 0.1.0)
 #   - CHANGELOG.md mentions the version
+#   - pub.dev: Enable automated publishing from GitHub Actions
+#     (Repository: zvec-ai/zvec-dart, Tag pattern: v{{version}})
 #
 # Trigger: git tag v0.1.0 && git push origin v0.1.0
 # =============================================================================
-name: "1 - Build & Release Native Libs"
+name: "Build, Release & Publish"
 
 on:
   push:
@@ -165,3 +167,50 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "${ZVEC_VERSION}" \
             --notes-file /tmp/release_notes.md
+
+  # =========================================================================
+  # Publish to pub.dev — after GitHub Release is created
+  #
+  # Uses OIDC trusted publishing (dart-lang/setup-dart) which requires
+  # the workflow to run on a 'push' or 'workflow_dispatch' event.
+  # =========================================================================
+  publish:
+    name: Publish to pub.dev
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC authentication with pub.dev
+    steps:
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+
+      - name: Setup Dart (for OIDC publishing)
+        uses: dart-lang/setup-dart@v1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Verify version consistency
+        run: |
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          echo "pubspec.yaml version: $PUBSPEC_VERSION"
+          echo "Tag version:          $TAG_VERSION"
+          if [ "$PUBSPEC_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch! pubspec.yaml=$PUBSPEC_VERSION, tag=$TAG_VERSION"
+            exit 1
+          fi
+
+      - name: Remove submodule gitlink for pub validation
+        run: |
+          # Workaround for dart pub bug (dart-lang/pub#3789):
+          # pub incorrectly warns about submodule gitlink entries being gitignored.
+          git rm --cached third_party/zvec
+
+      - name: Dry run
+        run: dart pub publish --dry-run
+
+      - name: Publish
+        run: dart pub publish --force
