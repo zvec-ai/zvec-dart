@@ -1,3 +1,7 @@
+## 0.1.6
+
+* Fix CI: replace fixed sleep with retry loop for pub.dev indexing delay.
+
 ## 0.1.5
 
 * Fix CI: iOS verify Podfile platform line was commented out by flutter create.

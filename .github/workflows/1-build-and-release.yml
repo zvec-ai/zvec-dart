@@ -244,9 +244,6 @@ jobs:
         with:
           channel: stable
 
-      - name: Wait for pub.dev indexing
-        run: sleep 120
-
       - name: Switch example to pub.dev dependency
         working-directory: example
         run: |
@@ -265,7 +262,21 @@ jobs:
           python3 /tmp/fix_dep.py
           echo "Updated pubspec.yaml:"
           grep -A2 'zvec:' pubspec.yaml
-          flutter pub get
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i: waiting 60s for pub.dev indexing..."
+            sleep 60
+            if flutter pub get; then
+              echo "Success on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "::error::Failed to resolve package after 6 attempts"
+          exit 1
 
       - name: Build APK
         working-directory: example
@@ -310,9 +321,6 @@ jobs:
         with:
           channel: stable
 
-      - name: Wait for pub.dev indexing
-        run: sleep 120
-
       - name: Switch example to pub.dev dependency
         working-directory: example
         run: |
@@ -331,7 +339,21 @@ jobs:
           python3 /tmp/fix_dep.py
           echo "Updated pubspec.yaml:"
           grep -A2 'zvec:' pubspec.yaml
-          flutter pub get
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i: waiting 60s for pub.dev indexing..."
+            sleep 60
+            if flutter pub get; then
+              echo "Success on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "::error::Failed to resolve package after 6 attempts"
+          exit 1
 
       - name: Generate iOS platform files
         working-directory: example

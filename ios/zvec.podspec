@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'zvec'
-  s.version          = '0.1.5'
+  s.version          = '0.1.6'
   s.summary          = 'Dart SDK for Zvec — a lightweight, lightning-fast, in-process vector database.'
   s.description      = <<-DESC
 Dart/Flutter SDK for Zvec, an embedded vector database by Alibaba.
