@@ -8,7 +8,7 @@
 
 ## 特性
 
-- 通过 `dart:ffi` 实现同步和异步向量操作
+- 通过 `dart:ffi` 实现同步向量操作
 - 支持 Android (`arm64-v8a`, `armeabi-v7a`) 和 iOS (`arm64`)
 - 预编译原生库在构建时自动从 GitHub Releases 下载
 - 终端用户无需手动编译原生代码
@@ -23,7 +23,7 @@ flutter pub add zvec
 
 ```yaml
 dependencies:
-  zvec: ^0.1.0
+  zvec: ^0.1.6
 ```
 
 ---
@@ -37,8 +37,8 @@ Zvec.initialize();
 print('Zvec version: ${Zvec.version}');
 
 final schema = CollectionSchema(name: 'demo', fields: [
-  FieldSchema.vector('embedding', dimension: 128),
-  FieldSchema.string('title'),
+  VectorSchema('embedding', 128, indexParams: HnswIndexParams()),
+  FieldSchema(name: 'title', dataType: DataType.string),
 ]);
 
 final collection = Collection.createAndOpen('/path/to/db', schema);
@@ -180,7 +180,9 @@ zvec-dart/
 ├── scripts/
 │   ├── build_all.sh                   # 一键编译所有平台
 │   ├── build_android.sh               # 编译 Android 原生库
-│   └── build_ios.sh                   # 编译 iOS 原生库
+│   ├── build_ios.sh                   # 编译 iOS 原生库
+│   ├── build_macos.sh                 # 编译 macOS 原生库
+│   └── run_tests.sh                   # 运行测试
 ├── lib/
 │   ├── zvec.dart                      # 公共 API 导出
 │   └── src/
@@ -209,7 +211,9 @@ zvec-dart/
 │   ├── zvec.podspec                   # CocoaPods 配置（自动下载 framework）
 │   └── zvec.framework/               # 动态框架（构建后生成）
 ├── example/lib/main.dart              # 示例 App
-├── test/zvec_test.dart                # 单元测试
+├── test/
+│   ├── zvec_test.dart                 # 单元测试
+│   └── zvec_native_test.dart          # 原生集成测试
 ├── ffigen.yaml                        # ffigen 配置
 └── pubspec.yaml                       # 包配置
 ```
@@ -228,10 +232,6 @@ zvec-dart/
 | 编译 protoc 失败 | 确保已安装 cmake 和 C++ 编译器 |
 
 ---
-
-## 发布流程
-
-详见 [.github/workflows/RELEASE_PIPELINE.md](.github/workflows/RELEASE_PIPELINE.md)。
 
 ## 许可证
 

@@ -8,7 +8,7 @@
 
 ## Features
 
-- Synchronous & asynchronous vector operations via `dart:ffi`
+- Synchronous vector operations via `dart:ffi`
 - Android (`arm64-v8a`) and iOS (`arm64`) support
 - Prebuilt native libraries auto-downloaded from GitHub Releases at build time
 - Zero manual native compilation for end users
@@ -37,8 +37,8 @@ Zvec.initialize();
 print('Zvec version: ${Zvec.version}');
 
 final schema = CollectionSchema(name: 'demo', fields: [
-  FieldSchema.vector('embedding', dimension: 128),
-  FieldSchema.string('title'),
+  VectorSchema('embedding', 128, indexParams: HnswIndexParams()),
+  FieldSchema(name: 'title', dataType: DataType.string),
 ]);
 
 final collection = Collection.createAndOpen('/path/to/db', schema);
@@ -180,7 +180,9 @@ zvec-dart/
 ├── scripts/
 │   ├── build_all.sh                   # Build all platforms
 │   ├── build_android.sh               # Build Android native lib
-│   └── build_ios.sh                   # Build iOS native lib
+│   ├── build_ios.sh                   # Build iOS native lib
+│   ├── build_macos.sh                 # Build macOS native lib
+│   └── run_tests.sh                   # Run tests
 ├── lib/
 │   ├── zvec.dart                      # Public API exports
 │   └── src/
@@ -209,7 +211,9 @@ zvec-dart/
 │   ├── zvec.podspec                   # CocoaPods config (auto-downloads framework)
 │   └── zvec.framework/               # Dynamic framework (after build)
 ├── example/lib/main.dart              # Example app
-├── test/zvec_test.dart                # Unit tests
+├── test/
+│   ├── zvec_test.dart                 # Unit tests
+│   └── zvec_native_test.dart          # Native integration tests
 ├── ffigen.yaml                        # ffigen config
 └── pubspec.yaml                       # Package config
 ```
@@ -228,10 +232,6 @@ zvec-dart/
 | protoc build fails | Ensure cmake and C++ compiler are installed |
 
 ---
-
-## Release Pipeline
-
-See [.github/workflows/RELEASE_PIPELINE.md](.github/workflows/RELEASE_PIPELINE.md) for the complete release process.
 
 ## License
 
