@@ -9,7 +9,7 @@
 ## Features
 
 - Synchronous & asynchronous vector operations via `dart:ffi`
-- Android (`arm64-v8a`, `armeabi-v7a`) and iOS (`arm64`) support
+- Android (`arm64-v8a`) and iOS (`arm64`) support
 - Prebuilt native libraries auto-downloaded from GitHub Releases at build time
 - Zero manual native compilation for end users
 
@@ -23,7 +23,7 @@ Or add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  zvec: ^0.1.0
+  zvec: ^0.1.6
 ```
 
 ---
