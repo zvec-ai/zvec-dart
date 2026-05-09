@@ -23,7 +23,7 @@ flutter pub add zvec
 
 ```yaml
 dependencies:
-  zvec: ^0.1.6
+  zvec: ^0.4.0
 ```
 
 ---

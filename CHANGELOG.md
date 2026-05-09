@@ -1,3 +1,9 @@
+## 0.4.0
+
+* Bump native zvec engine to v0.4.0.
+* Align Dart SDK version with native engine version.
+* Docs: fix Quick Start API examples and sync EN/ZH README.
+
 ## 0.1.6
 
 * Fix CI: replace fixed sleep with retry loop for pub.dev indexing delay.
