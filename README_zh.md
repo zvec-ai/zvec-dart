@@ -2,30 +2,20 @@
   <a href="./README.md">English</a> | 中文
 </p>
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center" valign="middle">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_log_2.svg" />
-          <img src="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_logo_1.svg" height="72" alt="Zvec" />
-        </picture>
-        <br/><sub><b>Zvec 引擎</b></sub>
-      </td>
-      <td align="center" valign="middle" width="40"><h2>×</h2></td>
-      <td align="center" valign="middle">
-        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/flutter/flutter-original.svg" height="72" alt="Flutter" />
-        <br/><sub><b>Flutter</b></sub>
-      </td>
-      <td align="center" valign="middle" width="40"><h2>+</h2></td>
-      <td align="center" valign="middle">
-        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dart/dart-original.svg" height="72" alt="Dart" />
-        <br/><sub><b>Dart</b></sub>
-      </td>
-    </tr>
-  </table>
-  <p><strong>面向 Dart &amp; Flutter 的高性能进程内向量数据库 — 由阿里巴巴开源的 <a href="https://github.com/alibaba/zvec">Zvec</a> 提供动力。</strong></p>
-</div>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_log_2.svg" />
+    <img src="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_logo_1.svg" height="80" alt="Zvec" />
+  </picture>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/flutter/flutter-original.svg" height="64" alt="Flutter" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dart/dart-original.svg" height="64" alt="Dart" />
+</p>
+
+<p align="center">
+  <strong>面向 Dart &amp; Flutter 的高性能进程内向量数据库 — 由阿里巴巴开源的 <a href="https://github.com/alibaba/zvec">Zvec</a> 提供动力。</strong>
+</p>
 
 <p align="center">
   <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/v/zvec.svg?label=pub.dev&logo=dart" alt="pub.dev"/></a>
