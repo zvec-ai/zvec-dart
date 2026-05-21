@@ -1,238 +1,145 @@
-# Zvec Dart SDK
+<p align="right">
+  English | <a href="./README_zh.md">中文</a>
+</p>
 
-**Dart/Flutter FFI plugin for [Zvec](https://github.com/alibaba/zvec) — a lightweight, lightning-fast, in-process vector database by Alibaba.**
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" valign="middle">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_log_2.svg" />
+          <img src="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_logo_1.svg" height="72" alt="Zvec" />
+        </picture>
+        <br/><sub><b>Zvec Engine</b></sub>
+      </td>
+      <td align="center" valign="middle" width="40"><h2>×</h2></td>
+      <td align="center" valign="middle">
+        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/flutter/flutter-original.svg" height="72" alt="Flutter" />
+        <br/><sub><b>Flutter</b></sub>
+      </td>
+      <td align="center" valign="middle" width="40"><h2>+</h2></td>
+      <td align="center" valign="middle">
+        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dart/dart-original.svg" height="72" alt="Dart" />
+        <br/><sub><b>Dart</b></sub>
+      </td>
+    </tr>
+  </table>
+  <p><strong>Lightning-fast, in-process vector database for Dart &amp; Flutter — powered by <a href="https://github.com/alibaba/zvec">Zvec</a>.</strong></p>
+</div>
 
-[中文文档](README_zh.md)
+<p align="center">
+  <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/v/zvec.svg?label=pub.dev&logo=dart" alt="pub.dev"/></a>
+  <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/points/zvec?logo=dart" alt="Pub Points"/></a>
+  <a href="https://github.com/zvec-ai/zvec-dart/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Flutter-%E2%89%A53.3.0-02569B?logo=flutter&logoColor=white" alt="Flutter"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.11.3-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-3DDC84" alt="Platforms"/></a>
+  <a href="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml"><img src="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml/badge.svg?branch=main" alt="Test"/></a>
+</p>
 
 ---
 
-## Features
+**Zvec Dart SDK** brings Alibaba's open-source [Zvec](https://github.com/alibaba/zvec) vector engine to mobile via `dart:ffi` — no servers, no IPC, just a single dynamic library running in your app's process. Build on-device semantic search, RAG, recommendation, and similarity workloads with milliseconds-level latency.
 
-- Synchronous vector operations via `dart:ffi`
-- Android (`arm64-v8a`) and iOS (`arm64`) support
-- Prebuilt native libraries auto-downloaded from GitHub Releases at build time
-- Zero manual native compilation for end users
+## 💫 Features
 
-## Installation
+- **🚀 Native speed** — Direct FFI calls into a battle-tested C++ engine; no method-channel hops, no isolate marshalling.
+- **📱 Mobile-first** — Ships prebuilt binaries for **Android** (`arm64-v8a`) and **iOS** (`arm64`).
+- **☁️ Zero-friction install** — Native libs are auto-fetched from GitHub Releases at build time. Your `pub.dev` package stays slim.
+- **🧠 Rich vector ops** — HNSW / IVF / Flat / Inverted indexes, hybrid filters, top-k & group-by queries.
+- **🔒 Durable storage** — Write-ahead log, atomic flush, persistent across app restarts.
+- **🎯 Idiomatic Dart** — Strongly-typed schema, exception-based error handling, synchronous API.
+
+## 📦 Installation
 
 ```bash
 flutter pub add zvec
 ```
 
-Or add to `pubspec.yaml`:
+Or in `pubspec.yaml`:
 
 ```yaml
 dependencies:
   zvec: ^0.4.0
 ```
 
----
+> **Platform support**
+>
+> | Platform | Architectures      | Distribution                                 |
+> | -------- | ------------------ | -------------------------------------------- |
+> | Android  | arm64-v8a              | Gradle task `downloadZvecNativeLibs`     |
+> | iOS      | arm64 (device)     | CocoaPods `prepare_command` (curl + unzip)   |
 
-## Quick Start
+## ⚡ Quick Start
 
 ```dart
+import 'dart:typed_data';
 import 'package:zvec/zvec.dart';
 
-Zvec.initialize();
-print('Zvec version: ${Zvec.version}');
+void main() {
+  // 1. Boot the engine
+  Zvec.initialize();
+  print('Zvec ${Zvec.version}');
 
-final schema = CollectionSchema(name: 'demo', fields: [
-  VectorSchema('embedding', 128, indexParams: HnswIndexParams()),
-  FieldSchema(name: 'title', dataType: DataType.string),
-]);
+  // 2. Define a schema: 4-dim FP32 vector + a string field
+  final schema = CollectionSchema(name: 'demo', fields: [
+    VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
+    FieldSchema(name: 'title', dataType: DataType.string),
+  ]);
 
-final collection = Collection.createAndOpen('/path/to/db', schema);
-// insert, query, fetch ...
-collection.close();
-Zvec.shutdown();
+  // 3. Create & open the collection
+  final collection = Collection.createAndOpen('/tmp/zvec_demo', schema);
+
+  // 4. Insert documents
+  final docs = [
+    Doc(id: 'doc_1')
+      ..setField('title', 'hello')
+      ..setVector('embedding', Float32List.fromList([0.1, 0.2, 0.3, 0.4])),
+    Doc(id: 'doc_2')
+      ..setField('title', 'world')
+      ..setVector('embedding', Float32List.fromList([0.2, 0.3, 0.4, 0.1])),
+  ];
+  collection.insert(docs);
+  for (final d in docs) d.destroy();
+
+  // 5. Build the index
+  collection.optimize();
+
+  // 6. Vector search — top-k by cosine similarity
+  final query = VectorQuery(
+    fieldName: 'embedding',
+    vector: Float32List.fromList([0.4, 0.3, 0.3, 0.1]),
+    topk: 5,
+    outputFields: ['title'],
+  );
+  for (final r in collection.query(query)) {
+    print('${r.pk}  score=${r.score}  title=${r.getString('title')}');
+  }
+  query.destroy();
+
+  // 7. Clean up
+  collection.close();
+  Zvec.shutdown();
+}
 ```
 
----
+A full Flutter demo lives in [`example/lib/main.dart`](example/lib/main.dart).
 
-## How Native Libraries Are Distributed
+## 🧬 How Native Libraries Are Distributed
 
-Native libraries are **NOT bundled in the pub.dev package**. They are automatically downloaded from GitHub Releases during the build process:
+Native libraries are **NOT bundled in the pub.dev tarball** — they're fetched on first build:
 
 | Platform | Mechanism | Trigger |
-|----------|-----------|---------|
-| Android | Gradle task `downloadZvecNativeLibs` in `build.gradle` | `flutter build apk` / `flutter run` |
-| iOS | `prepare_command` (curl + unzip) in `zvec.podspec` | `pod install` |
+| -------- | --------- | ------- |
+| Android  | Gradle task `downloadZvecNativeLibs` (`android/build.gradle`) | `flutter build apk` / `flutter run` |
+| iOS      | `prepare_command` in `ios/zvec.podspec` (curl + unzip)        | `pod install` |
 
----
+This keeps the Dart package small and lets us version native binaries independently.
 
-## Development Guide
+## 🤝 Contributing
 
-The following sections are for SDK developers who need to build from source.
+Issues and pull requests are welcome! Want to hack on the plugin or rebuild the native libraries? See **[BUILDING.md](BUILDING.md)** for the developer setup. For changes that touch the underlying engine, please file them in the [upstream zvec repo](https://github.com/alibaba/zvec) instead.
 
-### Prerequisites
+## 📄 License
 
-| Tool | Min Version | Install |
-|------|-------------|---------|
-| Flutter | >= 3.3.0 | https://docs.flutter.dev/get-started/install |
-| Dart SDK | >= 3.11.3 | Bundled with Flutter |
-| Android SDK | API 21+ | Android Studio → SDK Manager |
-| Android NDK | 27.x+ | Android Studio → SDK Manager → SDK Tools |
-| CMake | >= 3.10 | Android Studio → SDK Manager → SDK Tools |
-| Xcode | >= 15.0 | Mac App Store (iOS only) |
-| CocoaPods | >= 1.15 | `sudo gem install cocoapods` |
-
-```bash
-flutter doctor
-flutter --version
-```
-
-### Step 1: Clone the Repository
-
-```bash
-git clone --recursive <your-repo-url> zvec-dart
-cd zvec-dart
-
-# If you forgot --recursive:
-git submodule update --init --recursive
-```
-
-> The zvec C source is integrated as a git submodule at `third_party/zvec/`.
-
-### Step 2: Install Dependencies
-
-```bash
-flutter pub get
-cd example && flutter pub get && cd ..
-```
-
-### Step 3: Build Native Libraries
-
-#### All Platforms
-
-```bash
-bash scripts/build_all.sh
-```
-
-#### Android Only
-
-```bash
-# arm64-v8a (recommended, covers most devices)
-bash scripts/build_android.sh arm64-v8a
-
-# armeabi-v7a (older 32-bit devices)
-bash scripts/build_android.sh armeabi-v7a
-```
-
-Output: `android/src/main/jniLibs/<abi>/libzvec.so`
-
-> Build process: host protoc → NDK cross-compile zvec → copy .so to jniLibs
-
-#### iOS Only
-
-```bash
-# Device (arm64)
-bash scripts/build_ios.sh OS
-
-# Apple Silicon Simulator (optional)
-bash scripts/build_ios.sh SIMULATORARM64
-```
-
-Output: `ios/zvec.framework/` (dynamic framework)
-
-### Step 4: Run Tests
-
-```bash
-flutter test test/zvec_test.dart
-```
-
-### Step 5: Run the Example App
-
-#### Android
-
-```bash
-cd example
-flutter devices              # list available devices
-flutter run -d <device-id>   # run on device or emulator
-```
-
-#### iOS
-
-```bash
-cd example
-cd ios && pod install && cd ..
-flutter run -d <simulator-id>
-
-# Or open in Xcode
-open ios/Runner.xcworkspace
-```
-
-### Step 6: Regenerate FFI Bindings (Optional)
-
-When upstream zvec C API changes:
-
-```bash
-dart run ffigen
-```
-
----
-
-## Project Structure
-
-```
-zvec-dart/
-├── third_party/
-│   └── zvec/                          # git submodule → alibaba/zvec
-├── scripts/
-│   ├── build_all.sh                   # Build all platforms
-│   ├── build_android.sh               # Build Android native lib
-│   ├── build_ios.sh                   # Build iOS native lib
-│   ├── build_macos.sh                 # Build macOS native lib
-│   └── run_tests.sh                   # Run tests
-├── lib/
-│   ├── zvec.dart                      # Public API exports
-│   └── src/
-│       ├── zvec_bindings.dart         # Auto-generated FFI bindings (ffigen)
-│       ├── zvec_library.dart          # Dynamic library loader
-│       ├── types.dart                 # Enums: DataType, IndexType, MetricType ...
-│       ├── errors.dart                # ZvecException, checkError()
-│       ├── config.dart                # Zvec.initialize() / shutdown()
-│       ├── collection.dart            # Collection (core CRUD class)
-│       ├── collection_schema.dart     # CollectionSchema, FieldSchema
-│       ├── doc.dart                   # Doc (document read/write)
-│       ├── vector_query.dart          # VectorQuery, GroupByVectorQuery
-│       ├── index_params.dart          # Hnsw/IVF/Flat/Invert IndexParams
-│       ├── query_params.dart          # Hnsw/IVF/Flat QueryParams
-│       ├── collection_options.dart    # CollectionOptions
-│       └── collection_stats.dart      # CollectionStats
-├── src/
-│   ├── zvec_plugin.c                  # Empty stub (required by CMake)
-│   └── CMakeLists.txt                 # Android NDK build config
-├── android/
-│   ├── build.gradle                   # Gradle config (auto-downloads libzvec.so)
-│   └── src/main/jniLibs/             # Prebuilt .so files (after build)
-│       ├── arm64-v8a/libzvec.so
-│       └── armeabi-v7a/libzvec.so
-├── ios/
-│   ├── zvec.podspec                   # CocoaPods config (auto-downloads framework)
-│   └── zvec.framework/               # Dynamic framework (after build)
-├── example/lib/main.dart              # Example app
-├── test/
-│   ├── zvec_test.dart                 # Unit tests
-│   └── zvec_native_test.dart          # Native integration tests
-├── ffigen.yaml                        # ffigen config
-└── pubspec.yaml                       # Package config
-```
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| `third_party/zvec` is empty | `git submodule update --init --recursive` |
-| `DynamicLibrary.open` can't find `libzvec.so` | `bash scripts/build_android.sh arm64-v8a` |
-| iOS undefined symbols | Ensure `ios/zvec.framework/` exists, run `bash scripts/build_ios.sh` |
-| `dart run ffigen` fails | `brew install llvm` and set `CPATH` |
-| Android NDK version mismatch | Set `ANDROID_NDK_HOME` to the correct NDK path |
-| protoc build fails | Ensure cmake and C++ compiler are installed |
-
----
-
-## License
-
-See [LICENSE](LICENSE).
+Released under the [Apache License 2.0](LICENSE) — same as upstream Zvec.
