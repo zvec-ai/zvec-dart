@@ -4,13 +4,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_log_2.svg" />
-    <img src="https://zvec.oss-cn-hongkong.aliyuncs.com/logo/github_logo_1.svg" height="80" alt="Zvec" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/zvec-ai/zvec-dart/main/assets/hero-dark.svg" />
+    <img src="https://raw.githubusercontent.com/zvec-ai/zvec-dart/main/assets/hero-light.svg" width="610" alt="Zvec × Flutter + Dart" />
   </picture>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/flutter/flutter-original.svg" height="64" alt="Flutter" />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dart/dart-original.svg" height="64" alt="Dart" />
 </p>
 
 <p align="center">
@@ -19,7 +15,6 @@
 
 <p align="center">
   <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/v/zvec.svg?label=pub.dev&logo=dart" alt="pub.dev"/></a>
-  <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/points/zvec?logo=dart" alt="Pub Points"/></a>
   <a href="https://github.com/zvec-ai/zvec-dart/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Flutter-%E2%89%A53.3.0-02569B?logo=flutter&logoColor=white" alt="Flutter"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.11.3-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
