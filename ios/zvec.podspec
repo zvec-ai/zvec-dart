@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'zvec'
-  s.version          = '0.4.0'
+  s.version          = '0.5.0'
   s.summary          = 'Dart SDK for Zvec — a lightweight, lightning-fast, in-process vector database.'
   s.description      = <<-DESC
 Dart/Flutter SDK for Zvec, an embedded vector database by Alibaba.
@@ -21,6 +21,8 @@ on iOS and Android.
 
   # The native zvec library is provided as a prebuilt dynamic framework.
   # No source compilation needed — all symbols are in the vendored binary.
+  s.source_files = 'Classes/**/*'
+  s.public_header_files = 'Classes/**/*.h'
   s.ios.vendored_framework = 'zvec.framework'
 
   s.pod_target_xcconfig = {

@@ -1,3 +1,15 @@
+## 0.5.0
+
+* Bump native zvec engine to v0.5.0.
+* Add FTS support with `FtsQuery`, `FtsQueryParams`, and `FtsIndexParams`.
+* Add multi-query hybrid retrieval with `MultiQuery`, `SubQuery`, and rerank strategies.
+* Add Jieba tokenizer dictionary configuration via `ConfigData.setJiebaDictDir()` and `Zvec.setDefaultJiebaDictDir()`.
+* Register bundled Jieba dictionaries as the native default during package/plugin load.
+* Add `VectorQuery.fts(...)` for FTS-only searches.
+* Add optional `outputFields` and `includeVector` parameters to `Collection.fetch()` while preserving the default fetch behavior.
+* Return detailed per-document write errors through `WriteResult`.
+* Remove the deprecated `zvec_doc_validate` binding.
+
 ## 0.4.0
 
 * Bump native zvec engine to v0.4.0.

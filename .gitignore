@@ -47,3 +47,7 @@ example/ios/
 # They are built by scripts/build_*.sh and included only when publishing to pub.dev.
 android/src/main/jniLibs/
 ios/zvec.framework/
+
+tmp/*
+assets/jieba_dict/*
+!assets/jieba_dict/.gitkeep

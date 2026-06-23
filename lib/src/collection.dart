@@ -22,11 +22,51 @@ import 'collection_stats.dart';
 import 'doc.dart';
 import 'errors.dart';
 import 'index_params.dart';
+import 'multi_query.dart';
 import 'vector_query.dart';
 import 'zvec_bindings.dart';
 import 'zvec_library.dart';
 
 ZvecBindings get _b => ZvecLibrary.bindings;
+
+List<Doc> _takeOwnedDocs(Pointer<Pointer<zvec_doc_t>> documents, int count) {
+  final docs = <Doc>[];
+  if (documents == nullptr) return docs;
+  try {
+    for (var i = 0; i < count; i++) {
+      docs.add(Doc.fromOwnedNativePtr(documents[i]));
+    }
+    return docs;
+  } finally {
+    _b.zvec_free(documents.cast<Void>());
+  }
+}
+
+WriteResult _takeWriteResult(
+  Pointer<zvec_write_result_t> results,
+  int count,
+  String? Function(int index) pkAt,
+) {
+  final details = <WriteStatus>[];
+  if (results == nullptr) {
+    return const WriteResult(0, 0);
+  }
+
+  for (var i = 0; i < count; i++) {
+    final native = results[i];
+    final code = ZvecErrorCode.fromValue(native.code.value);
+    final messagePtr = native.message;
+    final message = messagePtr == nullptr
+        ? null
+        : messagePtr.cast<Utf8>().toDartString();
+    details.add(
+      WriteStatus(index: i, pk: pkAt(i), code: code, message: message),
+    );
+  }
+
+  final successCount = details.where((detail) => detail.isSuccess).length;
+  return WriteResult(successCount, details.length - successCount, details);
+}
 
 /// A vector collection in the Zvec database.
 ///
@@ -82,12 +122,14 @@ class Collection {
     final pathPtr = path.toNativeUtf8().cast<Char>();
     final collPtr = calloc<Pointer<zvec_collection_t>>();
     try {
-      checkError(_b.zvec_collection_create_and_open(
-        pathPtr,
-        schema.nativePtr,
-        options?.nativePtr ?? nullptr.cast<zvec_collection_options_t>(),
-        collPtr,
-      ));
+      checkError(
+        _b.zvec_collection_create_and_open(
+          pathPtr,
+          schema.nativePtr,
+          options?.nativePtr ?? nullptr.cast<zvec_collection_options_t>(),
+          collPtr,
+        ),
+      );
       return Collection._(collPtr.value);
     } finally {
       calloc.free(pathPtr);
@@ -106,11 +148,13 @@ class Collection {
     final pathPtr = path.toNativeUtf8().cast<Char>();
     final collPtr = calloc<Pointer<zvec_collection_t>>();
     try {
-      checkError(_b.zvec_collection_open(
-        pathPtr,
-        options?.nativePtr ?? nullptr.cast<zvec_collection_options_t>(),
-        collPtr,
-      ));
+      checkError(
+        _b.zvec_collection_open(
+          pathPtr,
+          options?.nativePtr ?? nullptr.cast<zvec_collection_options_t>(),
+          collPtr,
+        ),
+      );
       return Collection._(collPtr.value);
     } finally {
       calloc.free(pathPtr);
@@ -196,7 +240,7 @@ class Collection {
   ///
   /// Returns a [WriteResult] with the number of successes and failures.
   WriteResult insert(List<Doc> docs) {
-    return _batchWrite(docs, _b.zvec_collection_insert);
+    return _batchWrite(docs, _b.zvec_collection_insert_with_results);
   }
 
   /// Update existing documents in the collection.
@@ -204,14 +248,14 @@ class Collection {
   /// Documents are matched by primary key.
   /// Returns a [WriteResult] with the number of successes and failures.
   WriteResult update(List<Doc> docs) {
-    return _batchWrite(docs, _b.zvec_collection_update);
+    return _batchWrite(docs, _b.zvec_collection_update_with_results);
   }
 
   /// Insert or update documents (upsert) in the collection.
   ///
   /// Returns a [WriteResult] with the number of successes and failures.
   WriteResult upsert(List<Doc> docs) {
-    return _batchWrite(docs, _b.zvec_collection_upsert);
+    return _batchWrite(docs, _b.zvec_collection_upsert_with_results);
   }
 
   WriteResult _batchWrite(
@@ -220,23 +264,30 @@ class Collection {
       Pointer<zvec_collection_t>,
       Pointer<Pointer<zvec_doc_t>>,
       int,
+      Pointer<Pointer<zvec_write_result_t>>,
       Pointer<Size>,
-      Pointer<Size>,
-    ) fn,
+    )
+    fn,
   ) {
     final docsPtr = calloc<Pointer<zvec_doc_t>>(docs.length);
-    final successPtr = calloc<Size>();
-    final errorPtr = calloc<Size>();
+    final resultsPtr = calloc<Pointer<zvec_write_result_t>>();
+    final resultCountPtr = calloc<Size>();
     try {
       for (var i = 0; i < docs.length; i++) {
         docsPtr[i] = docs[i].nativePtr;
       }
-      checkError(fn(_ptr, docsPtr, docs.length, successPtr, errorPtr));
-      return WriteResult(successPtr.value, errorPtr.value);
+      checkError(fn(_ptr, docsPtr, docs.length, resultsPtr, resultCountPtr));
+      return _takeWriteResult(resultsPtr.value, resultCountPtr.value, (i) {
+        if (i < docs.length) return docs[i].pk;
+        return null;
+      });
     } finally {
+      if (resultsPtr.value != nullptr) {
+        _b.zvec_write_results_free(resultsPtr.value, resultCountPtr.value);
+      }
       calloc.free(docsPtr);
-      calloc.free(successPtr);
-      calloc.free(errorPtr);
+      calloc.free(resultsPtr);
+      calloc.free(resultCountPtr);
     }
   }
 
@@ -250,24 +301,37 @@ class Collection {
   WriteResult delete(List<String> pks) {
     final pksPtr = calloc<Pointer<Char>>(pks.length);
     final nativePtrs = <Pointer<Utf8>>[];
-    final successPtr = calloc<Size>();
-    final errorPtr = calloc<Size>();
+    final resultsPtr = calloc<Pointer<zvec_write_result_t>>();
+    final resultCountPtr = calloc<Size>();
     try {
       for (var i = 0; i < pks.length; i++) {
         final p = pks[i].toNativeUtf8();
         nativePtrs.add(p);
         pksPtr[i] = p.cast();
       }
-      checkError(_b.zvec_collection_delete(
-          _ptr, pksPtr, pks.length, successPtr, errorPtr));
-      return WriteResult(successPtr.value, errorPtr.value);
+      checkError(
+        _b.zvec_collection_delete_with_results(
+          _ptr,
+          pksPtr,
+          pks.length,
+          resultsPtr,
+          resultCountPtr,
+        ),
+      );
+      return _takeWriteResult(resultsPtr.value, resultCountPtr.value, (i) {
+        if (i < pks.length) return pks[i];
+        return null;
+      });
     } finally {
+      if (resultsPtr.value != nullptr) {
+        _b.zvec_write_results_free(resultsPtr.value, resultCountPtr.value);
+      }
       for (final p in nativePtrs) {
         calloc.free(p);
       }
       calloc.free(pksPtr);
-      calloc.free(successPtr);
-      calloc.free(errorPtr);
+      calloc.free(resultsPtr);
+      calloc.free(resultCountPtr);
     }
   }
 
@@ -293,24 +357,11 @@ class Collection {
     final resultsPtr = calloc<Pointer<Pointer<zvec_doc_t>>>();
     final countPtr = calloc<Size>();
     try {
-      checkError(_b.zvec_collection_query(
-          _ptr, query.nativePtr, resultsPtr, countPtr));
+      checkError(
+        _b.zvec_collection_query(_ptr, query.nativePtr, resultsPtr, countPtr),
+      );
       final count = countPtr.value;
-      final docs = <Doc>[];
-      for (var i = 0; i < count; i++) {
-        docs.add(Doc.fromNativePtr(resultsPtr.value[i]));
-      }
-      // Free the array container (not the individual docs — they are now
-      // wrapped in Dart Doc objects that don't own the pointer by default).
-      // The docs are owned by the result set; we wrap them non-owning.
-      // We need to keep track for cleanup.
-      // Actually per C API, zvec_docs_free frees both container and docs.
-      // So we should NOT call zvec_docs_free, instead wrap docs as non-owning
-      // and let user call destroy on each, or we copy data.
-      // Better approach: wrap as owning and free the container array only.
-      // But zvec_docs_free frees everything. Let's just return non-owning
-      // wrappers and store the raw pointer for later cleanup.
-      return docs;
+      return _takeOwnedDocs(resultsPtr.value, count);
     } finally {
       calloc.free(resultsPtr);
       calloc.free(countPtr);
@@ -319,32 +370,103 @@ class Collection {
 
   /// Fetch documents by primary keys.
   ///
-  /// Returns a list of [Doc] for the found documents.
-  List<Doc> fetch(List<String> pks) {
+  /// - [pks]: List of primary keys to fetch.
+  /// - [outputFields]: Optional list of fields to include in results.
+  ///   When `null` (the default), all fields are returned for backward
+  ///   compatibility. Passing an empty list currently follows the native
+  ///   `nullptr + 0` behavior and also returns all fields.
+  /// - [includeVector]: Whether to include vector data in results
+  ///   (default: `true`, matching the C++ `Collection::Fetch` default).
+  ///
+  /// Returns a list of [Doc] for the found documents. Missing primary keys
+  /// are silently omitted from the result.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Backward-compatible call: returns all fields including vectors.
+  /// final docs = collection.fetch(['key1', 'key2']);
+  ///
+  /// // Skip vectors for a lighter payload.
+  /// final meta = collection.fetch(['key1'], includeVector: false);
+  /// ```
+  List<Doc> fetch(
+    List<String> pks, {
+    List<String>? outputFields,
+    bool includeVector = true,
+  }) {
     final pksPtr = calloc<Pointer<Char>>(pks.length);
     final nativePtrs = <Pointer<Utf8>>[];
     final docsPtr = calloc<Pointer<Pointer<zvec_doc_t>>>();
     final countPtr = calloc<Size>();
+
+    // Prepare output fields
+    Pointer<Pointer<Char>> fieldsPtr = nullptr.cast();
+    final fieldNativePtrs = <Pointer<Utf8>>[];
+    final fieldCount = outputFields?.length ?? 0;
+
     try {
       for (var i = 0; i < pks.length; i++) {
         final p = pks[i].toNativeUtf8();
         nativePtrs.add(p);
         pksPtr[i] = p.cast();
       }
-      checkError(_b.zvec_collection_fetch(
-          _ptr, pksPtr, pks.length, docsPtr, countPtr));
-      final count = countPtr.value;
-      final docs = <Doc>[];
-      for (var i = 0; i < count; i++) {
-        docs.add(Doc.fromNativePtr(docsPtr.value[i]));
+
+      if (outputFields != null && outputFields.isNotEmpty) {
+        fieldsPtr = calloc<Pointer<Char>>(outputFields.length);
+        for (var i = 0; i < outputFields.length; i++) {
+          final p = outputFields[i].toNativeUtf8();
+          fieldNativePtrs.add(p);
+          fieldsPtr[i] = p.cast();
+        }
       }
-      return docs;
+
+      checkError(
+        _b.zvec_collection_fetch(
+          _ptr,
+          pksPtr,
+          pks.length,
+          fieldsPtr,
+          fieldCount,
+          includeVector,
+          docsPtr,
+          countPtr,
+        ),
+      );
+      final count = countPtr.value;
+      return _takeOwnedDocs(docsPtr.value, count);
     } finally {
       for (final p in nativePtrs) {
         calloc.free(p);
       }
+      for (final p in fieldNativePtrs) {
+        calloc.free(p);
+      }
       calloc.free(pksPtr);
+      if (fieldsPtr != nullptr.cast()) calloc.free(fieldsPtr);
       calloc.free(docsPtr);
+      calloc.free(countPtr);
+    }
+  }
+
+  /// Execute a multi-query combining multiple sub-queries with reranking.
+  ///
+  /// Returns a list of [Doc] results after fusion and reranking.
+  List<Doc> multiQuery(MultiQuery query) {
+    final resultsPtr = calloc<Pointer<Pointer<zvec_doc_t>>>();
+    final countPtr = calloc<Size>();
+    try {
+      checkError(
+        _b.zvec_collection_multi_query(
+          _ptr,
+          query.nativePtr,
+          resultsPtr,
+          countPtr,
+        ),
+      );
+      final count = countPtr.value;
+      return _takeOwnedDocs(resultsPtr.value, count);
+    } finally {
+      calloc.free(resultsPtr);
       calloc.free(countPtr);
     }
   }
@@ -360,8 +482,9 @@ class Collection {
   void createIndex(String fieldName, IndexParams indexParams) {
     final namePtr = fieldName.toNativeUtf8().cast<Char>();
     try {
-      checkError(_b.zvec_collection_create_index(
-          _ptr, namePtr, indexParams.nativePtr));
+      checkError(
+        _b.zvec_collection_create_index(_ptr, namePtr, indexParams.nativePtr),
+      );
     } finally {
       calloc.free(namePtr);
     }
@@ -386,11 +509,12 @@ class Collection {
   /// - [fieldSchema]: Schema for the new column.
   /// - [defaultExpression]: Optional default value expression.
   void addColumn(FieldSchema fieldSchema, {String? defaultExpression}) {
-    final exprPtr = defaultExpression?.toNativeUtf8().cast<Char>() ??
-        nullptr.cast<Char>();
+    final exprPtr =
+        defaultExpression?.toNativeUtf8().cast<Char>() ?? nullptr.cast<Char>();
     try {
-      checkError(_b.zvec_collection_add_column(
-          _ptr, fieldSchema.nativePtr, exprPtr));
+      checkError(
+        _b.zvec_collection_add_column(_ptr, fieldSchema.nativePtr, exprPtr),
+      );
     } finally {
       if (defaultExpression != null) {
         calloc.free(exprPtr);
@@ -422,12 +546,14 @@ class Collection {
     final newNamePtr =
         newName?.toNativeUtf8().cast<Char>() ?? nullptr.cast<Char>();
     try {
-      checkError(_b.zvec_collection_alter_column(
-        _ptr,
-        namePtr,
-        newNamePtr,
-        newSchema?.nativePtr ?? nullptr.cast<zvec_field_schema_t>(),
-      ));
+      checkError(
+        _b.zvec_collection_alter_column(
+          _ptr,
+          namePtr,
+          newNamePtr,
+          newSchema?.nativePtr ?? nullptr.cast<zvec_field_schema_t>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       if (newName != null) {
@@ -439,13 +565,30 @@ class Collection {
 
 /// Result of a batch write operation (insert/update/upsert/delete).
 class WriteResult {
-  const WriteResult(this.successCount, this.errorCount);
+  const WriteResult(
+    this.successCount,
+    this.errorCount, [
+    this.details = const [],
+  ]);
 
   /// Number of documents successfully processed.
   final int successCount;
 
   /// Number of documents that failed to process.
   final int errorCount;
+
+  /// Per-input write statuses. Result index corresponds to input index.
+  final List<WriteStatus> details;
+
+  /// Failed per-input statuses.
+  List<WriteStatus> get errors =>
+      details.where((detail) => !detail.isSuccess).toList(growable: false);
+
+  /// Error messages from failed write statuses.
+  List<String> get errorMessages => errors
+      .map((detail) => detail.message)
+      .whereType<String>()
+      .toList(growable: false);
 
   /// Total number of documents in the batch.
   int get totalCount => successCount + errorCount;
@@ -454,6 +597,47 @@ class WriteResult {
   bool get isAllSuccess => errorCount == 0;
 
   @override
-  String toString() =>
-      'WriteResult(success=$successCount, error=$errorCount)';
+  String toString() {
+    final base = 'WriteResult(success=$successCount, error=$errorCount)';
+    final failed = errors;
+    if (failed.isEmpty) return base;
+    final preview = failed.take(3).join(', ');
+    final suffix = failed.length > 3 ? ', ... +${failed.length - 3} more' : '';
+    return '$base, errors=[$preview$suffix]';
+  }
+}
+
+/// Per-input status returned by detailed batch write operations.
+class WriteStatus {
+  const WriteStatus({
+    required this.index,
+    required this.code,
+    this.pk,
+    this.message,
+  });
+
+  /// Input index corresponding to the document or primary key.
+  final int index;
+
+  /// Primary key when available.
+  final String? pk;
+
+  /// Per-input status code returned by native zvec.
+  final ZvecErrorCode code;
+
+  /// Per-input status message returned by native zvec.
+  final String? message;
+
+  bool get isSuccess => code == ZvecErrorCode.ok;
+
+  @override
+  String toString() {
+    final parts = <String>[
+      'index=$index',
+      if (pk != null) 'pk=$pk',
+      'code=${code.name}',
+      if (message != null && message!.isNotEmpty) 'message=$message',
+    ];
+    return 'WriteStatus(${parts.join(', ')})';
+  }
 }

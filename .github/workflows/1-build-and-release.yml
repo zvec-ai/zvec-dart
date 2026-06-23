@@ -193,6 +193,9 @@ jobs:
     steps:
       - name: Checkout at tag
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
       - name: Setup Dart (for OIDC publishing)
         uses: dart-lang/setup-dart@v1
@@ -212,6 +215,9 @@ jobs:
             echo "::error::Version mismatch! pubspec.yaml=$PUBSPEC_VERSION, tag=$TAG_VERSION"
             exit 1
           fi
+
+      - name: Prepare Jieba dictionary assets
+        run: bash scripts/prepare_jieba_assets.sh
 
       - name: Remove submodule gitlink for pub validation
         run: |

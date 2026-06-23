@@ -48,12 +48,10 @@ enum DataType {
   final int value;
 
   /// Whether this type represents a dense vector.
-  bool get isDenseVector =>
-      value >= 20 && value <= 27;
+  bool get isDenseVector => value >= 20 && value <= 27;
 
   /// Whether this type represents a sparse vector.
-  bool get isSparseVector =>
-      value >= 30 && value <= 31;
+  bool get isSparseVector => value >= 30 && value <= 31;
 
   /// Whether this type represents any vector (dense or sparse).
   bool get isVector => isDenseVector || isSparseVector;
@@ -61,9 +59,10 @@ enum DataType {
   /// Whether this type represents an array.
   bool get isArray => value >= 40 && value <= 48;
 
-  static DataType fromValue(int v) =>
-      DataType.values.firstWhere((e) => e.value == v,
-          orElse: () => DataType.undefined);
+  static DataType fromValue(int v) => DataType.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => DataType.undefined,
+  );
 }
 
 /// Index algorithm types — mirrors `zvec_index_type_t` constants.
@@ -73,14 +72,16 @@ enum IndexType {
   ivf(2),
   flat(3),
   hnswRabitq(4),
-  invert(10);
+  invert(10),
+  fts(11);
 
   const IndexType(this.value);
   final int value;
 
-  static IndexType fromValue(int v) =>
-      IndexType.values.firstWhere((e) => e.value == v,
-          orElse: () => IndexType.undefined);
+  static IndexType fromValue(int v) => IndexType.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => IndexType.undefined,
+  );
 }
 
 /// Distance metric types — mirrors `zvec_metric_type_t` constants.
@@ -94,9 +95,10 @@ enum MetricType {
   const MetricType(this.value);
   final int value;
 
-  static MetricType fromValue(int v) =>
-      MetricType.values.firstWhere((e) => e.value == v,
-          orElse: () => MetricType.undefined);
+  static MetricType fromValue(int v) => MetricType.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => MetricType.undefined,
+  );
 }
 
 /// Quantization types — mirrors `zvec_quantize_type_t` constants.
@@ -110,9 +112,10 @@ enum QuantizeType {
   const QuantizeType(this.value);
   final int value;
 
-  static QuantizeType fromValue(int v) =>
-      QuantizeType.values.firstWhere((e) => e.value == v,
-          orElse: () => QuantizeType.undefined);
+  static QuantizeType fromValue(int v) => QuantizeType.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => QuantizeType.undefined,
+  );
 }
 
 /// Log levels — mirrors `zvec_log_level_t`.
@@ -126,9 +129,10 @@ enum LogLevel {
   const LogLevel(this.value);
   final int value;
 
-  static LogLevel fromValue(int v) =>
-      LogLevel.values.firstWhere((e) => e.value == v,
-          orElse: () => LogLevel.info);
+  static LogLevel fromValue(int v) => LogLevel.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => LogLevel.info,
+  );
 }
 
 /// Log output types — mirrors `zvec_log_type_t`.
@@ -139,7 +143,8 @@ enum LogType {
   const LogType(this.value);
   final int value;
 
-  static LogType fromValue(int v) =>
-      LogType.values.firstWhere((e) => e.value == v,
-          orElse: () => LogType.console);
+  static LogType fromValue(int v) => LogType.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => LogType.console,
+  );
 }

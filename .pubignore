@@ -16,6 +16,8 @@ scripts/
 
 # Build intermediates
 /build/
+tmp/
+assets/jieba_dict/.gitkeep
 
 # Prebuilt native libraries (downloaded at build time, not shipped in package)
 android/src/main/jniLibs/
