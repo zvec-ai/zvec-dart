@@ -1222,6 +1222,77 @@ void main() {
     });
   });
 
+  group('Jieba FTS end-to-end', () {
+    test('queries Chinese text using bundled default dict', () {
+      final dir = _createTempDir('jieba_fts');
+      Collection? collection;
+      try {
+        final title = FieldSchema(
+          name: 'title',
+          dataType: DataType.string,
+          nullable: false,
+        );
+        final content = FieldSchema(
+          name: 'content',
+          dataType: DataType.string,
+          nullable: false,
+        );
+        final ftsParams = FtsIndexParams(
+          tokenizerName: 'jieba',
+          filters: ['lowercase'],
+        );
+        content.setIndexParams(ftsParams);
+
+        final schema = CollectionSchema(name: 'jieba_fts_default');
+        schema.addField(title);
+        schema.addField(content);
+        title.destroy();
+        content.destroy();
+        ftsParams.destroy();
+
+        collection = Collection.createAndOpen(_dbPath(dir), schema);
+        schema.destroy();
+
+        final docs = [
+          Doc(id: 'pk_1')
+            ..setField('title', 'match')
+            ..setField('content', '中华人民共和国成立'),
+          Doc(id: 'pk_2')
+            ..setField('title', 'miss')
+            ..setField('content', '无关文档'),
+        ];
+        final insertResult = collection.insert(docs);
+        for (final doc in docs) {
+          doc.destroy();
+        }
+
+        if (!insertResult.isAllSuccess) {
+          fail('Jieba FTS insert failed: $insertResult');
+        }
+
+        final fts = FtsQuery(matchString: '中华');
+        final query = VectorQuery.fts(
+          fieldName: 'content',
+          fts: fts,
+          topk: 10,
+          outputFields: ['title', 'content'],
+        );
+        final results = collection.query(query);
+        query.destroy();
+        fts.destroy();
+
+        final ids = results.map((doc) => doc.pk).toSet();
+        expect(ids, contains('pk_1'));
+        expect(ids, isNot(contains('pk_2')));
+      } finally {
+        try {
+          collection?.close();
+        } catch (_) {}
+        _cleanupDir(dir);
+      }
+    });
+  });
+
   group('SubQuery', () {
     test('create with dense vector', () {
       final sq = SubQuery(
