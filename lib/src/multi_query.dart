@@ -184,8 +184,10 @@ void _attachSubQueryParams(
 
 /// A multi-query that combines multiple sub-queries with reranking.
 ///
-/// Supports hybrid search combining dense vectors, sparse vectors,
-/// and FTS results using RRF or weighted fusion.
+/// Supports hybrid search combining dense vectors and sparse vectors using RRF
+/// or weighted fusion. FTS-only search is exposed by `VectorQuery.fts`; vector
+/// + FTS fusion can be exposed here once the native C API provides an FTS
+/// sub-query setter.
 ///
 /// Example:
 /// ```dart

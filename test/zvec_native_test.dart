@@ -98,6 +98,72 @@ CollectionSchema _createTestSchema() {
   return (collection, dir);
 }
 
+/// Helper: create a collection with two searchable vector fields.
+(Collection, Directory) _createMultiVectorCollection() {
+  final dir = _createTempDir('multi_vector');
+  final schema = CollectionSchema(
+    name: 'multi_vector_collection',
+    fields: [
+      VectorSchema('title_embedding', 4, indexParams: FlatIndexParams()),
+      VectorSchema('body_embedding', 4, indexParams: FlatIndexParams()),
+      FieldSchema(name: 'title', dataType: DataType.string),
+      FieldSchema(name: 'rank', dataType: DataType.int64),
+    ],
+  );
+  final collection = Collection.createAndOpen(_dbPath(dir), schema);
+  schema.destroy();
+
+  final titleNeedle = Float32List.fromList([1.0, 0.0, 0.0, 0.0]);
+  final bodyNeedle = Float32List.fromList([0.0, 1.0, 0.0, 0.0]);
+  final other = Float32List.fromList([0.0, 0.0, 1.0, 0.0]);
+  final far = Float32List.fromList([0.0, 0.0, 0.0, 1.0]);
+
+  final docs = [
+    Doc(id: 'pk_both')
+      ..setField('title', 'Both fields')
+      ..setField('rank', 10)
+      ..setVector('title_embedding', titleNeedle)
+      ..setVector('body_embedding', bodyNeedle),
+    Doc(id: 'pk_title')
+      ..setField('title', 'Title field')
+      ..setField('rank', 20)
+      ..setVector('title_embedding', titleNeedle)
+      ..setVector('body_embedding', other),
+    Doc(id: 'pk_body')
+      ..setField('title', 'Body field')
+      ..setField('rank', 30)
+      ..setVector('title_embedding', other)
+      ..setVector('body_embedding', bodyNeedle),
+    Doc(id: 'pk_far')
+      ..setField('title', 'Far field')
+      ..setField('rank', 40)
+      ..setVector('title_embedding', far)
+      ..setVector('body_embedding', far),
+  ];
+
+  final insertResult = collection.insert(docs);
+  for (final doc in docs) {
+    doc.destroy();
+  }
+
+  if (insertResult.successCount != docs.length ||
+      insertResult.errorCount != 0) {
+    final details = insertResult.errors.join('; ');
+    try {
+      collection.close();
+    } catch (_) {}
+    _cleanupDir(dir);
+    fail(
+      '_createMultiVectorCollection failed to insert seed docs: '
+      '$insertResult, expected success=${docs.length}, error=0, '
+      'details=[$details]',
+    );
+  }
+
+  collection.optimize();
+  return (collection, dir);
+}
+
 void main() {
   // Single initialization for the whole test suite.
   // Zvec.shutdown() / re-initialize cycles can block, so we initialize once.
@@ -1434,6 +1500,94 @@ void main() {
       mq.destroy();
       sqDense.destroy();
       sqSparse.destroy();
+    });
+
+    test('executes vector + vector RRF fusion', () {
+      final result = _createMultiVectorCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final titleSubQuery = SubQuery(
+        fieldName: 'title_embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final bodySubQuery = SubQuery(
+        fieldName: 'body_embedding',
+        vector: Float32List.fromList([0.0, 1.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [titleSubQuery, bodySubQuery],
+        topk: 3,
+        outputFields: ['title', 'rank'],
+        rerank: const RrfRerank(rankConstant: 60),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toList();
+
+        expect(ids, isNotEmpty);
+        expect(ids.first, 'pk_both');
+        expect(ids, containsAll(['pk_title', 'pk_body']));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getInt64('rank'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        titleSubQuery.destroy();
+        bodySubQuery.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
+    });
+
+    test('executes vector + vector weighted fusion with filter', () {
+      final result = _createMultiVectorCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final titleSubQuery = SubQuery(
+        fieldName: 'title_embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final bodySubQuery = SubQuery(
+        fieldName: 'body_embedding',
+        vector: Float32List.fromList([0.0, 1.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [titleSubQuery, bodySubQuery],
+        topk: 4,
+        filter: 'rank < 40',
+        includeVector: true,
+        outputFields: ['title', 'rank'],
+        rerank: const WeightedRerank(weights: [0.8, 0.2]),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toSet();
+
+        expect(ids, isNot(contains('pk_far')));
+        expect(ids, containsAll(['pk_both', 'pk_title', 'pk_body']));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getInt64('rank'), lessThan(40));
+          expect(doc.getVector('title_embedding'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        titleSubQuery.destroy();
+        bodySubQuery.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
     });
   });
 
