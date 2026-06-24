@@ -164,6 +164,78 @@ CollectionSchema _createTestSchema() {
   return (collection, dir);
 }
 
+/// Helper: create a collection with one vector field and one FTS field.
+(Collection, Directory) _createVectorFtsCollection() {
+  final dir = _createTempDir('vector_fts');
+  final content = FieldSchema(
+    name: 'content',
+    dataType: DataType.string,
+    nullable: false,
+  );
+  final ftsIndexParams = FtsIndexParams(
+    tokenizerName: 'jieba',
+    filters: ['lowercase'],
+  );
+  content.setIndexParams(ftsIndexParams);
+
+  final schema = CollectionSchema(
+    name: 'vector_fts_collection',
+    fields: [
+      VectorSchema('embedding', 4, indexParams: FlatIndexParams()),
+      FieldSchema(name: 'title', dataType: DataType.string),
+      content,
+    ],
+  );
+  final collection = Collection.createAndOpen(_dbPath(dir), schema);
+  schema.destroy();
+  content.destroy();
+  ftsIndexParams.destroy();
+
+  final vectorNeedle = Float32List.fromList([1.0, 0.0, 0.0, 0.0]);
+  final far = Float32List.fromList([0.0, 0.0, 0.0, 1.0]);
+
+  final docs = [
+    Doc(id: 'pk_both')
+      ..setField('title', 'Vector and FTS')
+      ..setField('content', '中华人民共和国成立')
+      ..setVector('embedding', vectorNeedle),
+    Doc(id: 'pk_vector')
+      ..setField('title', 'Vector only')
+      ..setField('content', '无关文档')
+      ..setVector('embedding', vectorNeedle),
+    Doc(id: 'pk_fts')
+      ..setField('title', 'FTS only')
+      ..setField('content', '中华文化源远流长')
+      ..setVector('embedding', far),
+    Doc(id: 'pk_far')
+      ..setField('title', 'Far')
+      ..setField('content', '完全不同')
+      ..setVector('embedding', far),
+  ];
+
+  final insertResult = collection.insert(docs);
+  for (final doc in docs) {
+    doc.destroy();
+  }
+
+  if (insertResult.successCount != docs.length ||
+      insertResult.errorCount != 0) {
+    final details = insertResult.errors.join('; ');
+    try {
+      collection.close();
+    } catch (_) {}
+    _cleanupDir(dir);
+    fail(
+      '_createVectorFtsCollection failed to insert seed docs: '
+      '$insertResult, expected success=${docs.length}, error=0, '
+      'details=[$details]',
+    );
+  }
+
+  collection.optimize();
+  return (collection, dir);
+}
+
 void main() {
   // Single initialization for the whole test suite.
   // Zvec.shutdown() / re-initialize cycles can block, so we initialize once.
@@ -1400,6 +1472,32 @@ void main() {
       sq.destroy();
       qp.destroy();
     });
+
+    test('create with FTS payload and params', () {
+      final fts = FtsQuery(matchString: '中华');
+      final qp = FtsQueryParams(defaultOperator: 'AND');
+      final sq = SubQuery(fieldName: 'content', fts: fts, ftsParams: qp);
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+      qp.destroy();
+      fts.destroy();
+    });
+
+    test('rejects vector and FTS payload in one sub-query', () {
+      final fts = FtsQuery(matchString: '中华');
+      try {
+        expect(
+          () => SubQuery(
+            fieldName: 'content',
+            vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+            fts: fts,
+          ),
+          throwsArgumentError,
+        );
+      } finally {
+        fts.destroy();
+      }
+    });
   });
 
   group('MultiQuery', () {
@@ -1583,6 +1681,55 @@ void main() {
         query.destroy();
         titleSubQuery.destroy();
         bodySubQuery.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
+    });
+
+    test('executes vector + FTS RRF fusion', () {
+      final result = _createVectorFtsCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final fts = FtsQuery(matchString: '中华');
+      final ftsParams = FtsQueryParams(defaultOperator: 'OR');
+      final vectorSubQuery = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final ftsSubQuery = SubQuery(
+        fieldName: 'content',
+        fts: fts,
+        ftsParams: ftsParams,
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [vectorSubQuery, ftsSubQuery],
+        topk: 3,
+        outputFields: ['title', 'content'],
+        rerank: const RrfRerank(rankConstant: 60),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toList();
+
+        expect(ids, isNotEmpty);
+        expect(ids.first, 'pk_both');
+        expect(ids, containsAll(['pk_vector', 'pk_fts']));
+        expect(ids, isNot(contains('pk_far')));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getString('content'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        vectorSubQuery.destroy();
+        ftsSubQuery.destroy();
+        ftsParams.destroy();
+        fts.destroy();
         try {
           collection.close();
         } catch (_) {}

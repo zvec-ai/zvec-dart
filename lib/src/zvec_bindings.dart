@@ -1447,6 +1447,116 @@ class ZvecBindings {
       _zvec_index_params_get_hnsw_ef_constructionPtr
           .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
 
+  /// @brief Set Vamana specific parameters
+  /// @param params Index parameters (must be VAMANA type)
+  /// @param max_degree Maximum out-degree (R) of every node (default: 64)
+  /// @param search_list_size Candidate list size during construction (default:
+  /// 100)
+  /// @param alpha RobustPrune alpha factor (default: 1.2)
+  /// @param saturate_graph Force every node to reach max_degree (default: false)
+  /// @param use_contiguous_memory Allocate contiguous memory arena (default:
+  /// false)
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_vamana_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    int max_degree,
+    int search_list_size,
+    double alpha,
+    bool saturate_graph,
+    bool use_contiguous_memory,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_set_vamana_params(
+        params,
+        max_degree,
+        search_list_size,
+        alpha,
+        saturate_graph,
+        use_contiguous_memory,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Int,
+            ffi.Int,
+            ffi.Float,
+            ffi.Bool,
+            ffi.Bool,
+          )
+        >
+      >('zvec_index_params_set_vamana_params');
+  late final _zvec_index_params_set_vamana_params =
+      _zvec_index_params_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              int,
+              int,
+              double,
+              bool,
+              bool,
+            )
+          >();
+
+  /// @brief Get Vamana parameters (all at once)
+  /// @param params Index parameters (must be VAMANA type)
+  /// @param[out] out_max_degree Maximum out-degree
+  /// @param[out] out_search_list_size Construction candidate list size
+  /// @param[out] out_alpha RobustPrune alpha factor
+  /// @param[out] out_saturate_graph Whether saturate graph is enabled
+  /// @param[out] out_use_contiguous_memory Whether contiguous memory is enabled
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_get_vamana_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    ffi.Pointer<ffi.Int> out_max_degree,
+    ffi.Pointer<ffi.Int> out_search_list_size,
+    ffi.Pointer<ffi.Float> out_alpha,
+    ffi.Pointer<ffi.Bool> out_saturate_graph,
+    ffi.Pointer<ffi.Bool> out_use_contiguous_memory,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_get_vamana_params(
+        params,
+        out_max_degree,
+        out_search_list_size,
+        out_alpha,
+        out_saturate_graph,
+        out_use_contiguous_memory,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_get_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Pointer<ffi.Int>,
+            ffi.Pointer<ffi.Int>,
+            ffi.Pointer<ffi.Float>,
+            ffi.Pointer<ffi.Bool>,
+            ffi.Pointer<ffi.Bool>,
+          )
+        >
+      >('zvec_index_params_get_vamana_params');
+  late final _zvec_index_params_get_vamana_params =
+      _zvec_index_params_get_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Float>,
+              ffi.Pointer<ffi.Bool>,
+              ffi.Pointer<ffi.Bool>,
+            )
+          >();
+
   /// @brief Set IVF specific parameters
   /// @param params Index parameters (must be IVF type)
   /// @param n_list Number of cluster centers
@@ -2536,6 +2646,257 @@ class ZvecBindings {
             ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_query_params_t>)
           >();
 
+  /// @brief Create Vamana query parameters
+  /// @param ef_search Search-time candidate list size (default: 200)
+  /// @param radius Search radius (default: 0.0)
+  /// @param is_linear Whether linear search (default: false)
+  /// @param is_using_refiner Whether using refiner (default: false)
+  /// @return zvec_vamana_query_params_t* Pointer to the newly created Vamana
+  /// query parameters
+  ffi.Pointer<zvec_vamana_query_params_t> zvec_query_params_vamana_create(
+    int ef_search,
+    double radius,
+    bool is_linear,
+    bool is_using_refiner,
+  ) {
+    return _zvec_query_params_vamana_create(
+      ef_search,
+      radius,
+      is_linear,
+      is_using_refiner,
+    );
+  }
+
+  late final _zvec_query_params_vamana_createPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<zvec_vamana_query_params_t> Function(
+            ffi.Int,
+            ffi.Float,
+            ffi.Bool,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_create');
+  late final _zvec_query_params_vamana_create =
+      _zvec_query_params_vamana_createPtr
+          .asFunction<
+            ffi.Pointer<zvec_vamana_query_params_t> Function(
+              int,
+              double,
+              bool,
+              bool,
+            )
+          >();
+
+  /// @brief Destroy Vamana query parameters
+  /// @param params Vamana query parameters pointer
+  void zvec_query_params_vamana_destroy(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_destroy(params);
+  }
+
+  late final _zvec_query_params_vamana_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_destroy');
+  late final _zvec_query_params_vamana_destroy =
+      _zvec_query_params_vamana_destroyPtr
+          .asFunction<void Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set search-time candidate list size
+  /// @param params Vamana query parameters pointer
+  /// @param ef_search Candidate list size
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_ef_search(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    int ef_search,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_ef_search(params, ef_search),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_ef_searchPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Int,
+          )
+        >
+      >('zvec_query_params_vamana_set_ef_search');
+  late final _zvec_query_params_vamana_set_ef_search =
+      _zvec_query_params_vamana_set_ef_searchPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, int)
+          >();
+
+  /// @brief Get search-time candidate list size
+  /// @param params Vamana query parameters pointer
+  /// @return int Candidate list size
+  int zvec_query_params_vamana_get_ef_search(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_ef_search(params);
+  }
+
+  late final _zvec_query_params_vamana_get_ef_searchPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_ef_search');
+  late final _zvec_query_params_vamana_get_ef_search =
+      _zvec_query_params_vamana_get_ef_searchPtr
+          .asFunction<int Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set search radius
+  /// @param params Vamana query parameters pointer
+  /// @param radius Search radius
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_radius(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    double radius,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_radius(params, radius),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_radiusPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Float,
+          )
+        >
+      >('zvec_query_params_vamana_set_radius');
+  late final _zvec_query_params_vamana_set_radius =
+      _zvec_query_params_vamana_set_radiusPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, double)
+          >();
+
+  /// @brief Get search radius
+  /// @param params Vamana query parameters pointer
+  /// @return float Search radius
+  double zvec_query_params_vamana_get_radius(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_radius(params);
+  }
+
+  late final _zvec_query_params_vamana_get_radiusPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Float Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_radius');
+  late final _zvec_query_params_vamana_get_radius =
+      _zvec_query_params_vamana_get_radiusPtr
+          .asFunction<
+            double Function(ffi.Pointer<zvec_vamana_query_params_t>)
+          >();
+
+  /// @brief Set linear search mode
+  /// @param params Vamana query parameters pointer
+  /// @param is_linear Whether linear search
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_is_linear(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    bool is_linear,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_is_linear(params, is_linear),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_is_linearPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_set_is_linear');
+  late final _zvec_query_params_vamana_set_is_linear =
+      _zvec_query_params_vamana_set_is_linearPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, bool)
+          >();
+
+  /// @brief Get linear search mode
+  /// @param params Vamana query parameters pointer
+  /// @return bool Whether linear search
+  bool zvec_query_params_vamana_get_is_linear(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_is_linear(params);
+  }
+
+  late final _zvec_query_params_vamana_get_is_linearPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_is_linear');
+  late final _zvec_query_params_vamana_get_is_linear =
+      _zvec_query_params_vamana_get_is_linearPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set whether to use refiner
+  /// @param params Vamana query parameters pointer
+  /// @param is_using_refiner Whether to use refiner
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_is_using_refiner(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    bool is_using_refiner,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_is_using_refiner(params, is_using_refiner),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_is_using_refinerPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_set_is_using_refiner');
+  late final _zvec_query_params_vamana_set_is_using_refiner =
+      _zvec_query_params_vamana_set_is_using_refinerPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, bool)
+          >();
+
+  /// @brief Get whether to use refiner
+  /// @param params Vamana query parameters pointer
+  /// @return bool Whether to use refiner
+  bool zvec_query_params_vamana_get_is_using_refiner(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_is_using_refiner(params);
+  }
+
+  late final _zvec_query_params_vamana_get_is_using_refinerPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_is_using_refiner');
+  late final _zvec_query_params_vamana_get_is_using_refiner =
+      _zvec_query_params_vamana_get_is_using_refinerPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
   /// @brief Create vector query
   /// @return zvec_vector_query_t* Pointer to the newly created vector query
   ffi.Pointer<zvec_vector_query_t> zvec_vector_query_create() {
@@ -3039,6 +3400,37 @@ class ZvecBindings {
             int Function(
               ffi.Pointer<zvec_vector_query_t>,
               ffi.Pointer<zvec_fts_query_params_t>,
+            )
+          >();
+
+  /// @brief Set Vamana query parameters for vector query
+  /// @param query Vector query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_vamana_params(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_vector_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_vector_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vector_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_vector_query_set_vamana_params');
+  late final _zvec_vector_query_set_vamana_params =
+      _zvec_vector_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_vector_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
             )
           >();
 
@@ -3784,6 +4176,37 @@ class ZvecBindings {
             )
           >();
 
+  /// @brief Set Vamana query parameters (takes ownership)
+  /// @param query Group by vector query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_group_by_vector_query_set_vamana_params(
+    ffi.Pointer<zvec_group_by_vector_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_group_by_vector_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_group_by_vector_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_group_by_vector_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_group_by_vector_query_set_vamana_params');
+  late final _zvec_group_by_vector_query_set_vamana_params =
+      _zvec_group_by_vector_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_group_by_vector_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
+            )
+          >();
+
   /// @brief Set RRF rerank strategy on a multi-query.
   /// @param query Multi-query pointer
   /// @param rank_constant RRF rank constant (default: 60)
@@ -4458,6 +4881,92 @@ class ZvecBindings {
               ffi.Pointer<zvec_flat_query_params_t>,
             )
           >();
+
+  /// @brief Set Vamana query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_vamana_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_vamana_params');
+  late final _zvec_sub_query_set_vamana_params =
+      _zvec_sub_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
+            )
+          >();
+
+  /// @brief Set FTS query parameters on a sub-query (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param fts_params FTS query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_fts_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_fts_query_params_t> fts_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_fts_params(query, fts_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_fts_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_fts_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_fts_params');
+  late final _zvec_sub_query_set_fts_params = _zvec_sub_query_set_fts_paramsPtr
+      .asFunction<
+        int Function(
+          ffi.Pointer<zvec_sub_query_t>,
+          ffi.Pointer<zvec_fts_query_params_t>,
+        )
+      >();
+
+  /// @brief Set FTS clause on a sub-query (copies the FTS clause)
+  /// @param query Sub-query pointer
+  /// @param fts FTS clause pointer, or NULL to clear
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_fts(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_fts_t> fts,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_sub_query_set_fts(query, fts));
+  }
+
+  late final _zvec_sub_query_set_ftsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_fts_t>,
+          )
+        >
+      >('zvec_sub_query_set_fts');
+  late final _zvec_sub_query_set_fts = _zvec_sub_query_set_ftsPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_sub_query_t>, ffi.Pointer<zvec_fts_t>)
+      >();
 
   /// @brief Create collection options
   /// @return zvec_collection_options_t* Pointer to the newly created collection
@@ -8071,6 +8580,8 @@ final class zvec_flat_query_params_t extends ffi.Opaque {}
 
 final class zvec_fts_query_params_t extends ffi.Opaque {}
 
+final class zvec_vamana_query_params_t extends ffi.Opaque {}
+
 final class zvec_vector_query_t extends ffi.Opaque {}
 
 final class zvec_group_by_vector_query_t extends ffi.Opaque {}
@@ -8238,6 +8749,8 @@ const int ZVEC_INDEX_TYPE_HNSW = 1;
 const int ZVEC_INDEX_TYPE_IVF = 2;
 
 const int ZVEC_INDEX_TYPE_FLAT = 3;
+
+const int ZVEC_INDEX_TYPE_VAMANA = 6;
 
 const int ZVEC_INDEX_TYPE_INVERT = 10;
 

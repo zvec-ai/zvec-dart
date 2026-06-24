@@ -82,8 +82,7 @@ class VectorQuery {
   /// Create an FTS-only query.
   ///
   /// Native search queries carry either a vector clause or an FTS clause. For
-  /// vector + FTS fusion, use native multi-query support once an FTS sub-query
-  /// setter is exposed by the C API.
+  /// vector + FTS fusion, use multi-query with separate sub-query instances.
   VectorQuery.fts({
     required String fieldName,
     required FtsQuery fts,

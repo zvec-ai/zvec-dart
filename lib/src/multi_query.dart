@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
 import 'errors.dart';
+import 'fts_query.dart';
 import 'query_params.dart';
 import 'zvec_bindings.dart';
 import 'zvec_library.dart';
@@ -53,25 +54,38 @@ class WeightedRerank extends RerankStrategy {
 
 /// A sub-query component for [MultiQuery].
 ///
-/// Represents either a dense vector search or a sparse vector search
+/// Represents either a dense vector search, sparse vector search, or FTS search
 /// on a specific field.
 class SubQuery {
   /// Create a sub-query.
   ///
   /// - [fieldName]: The field to search on.
-  /// - [vector]: Dense query vector (FP32). Provide either this or [sparseIndices]+[sparseValues].
+  /// - [vector]: Dense query vector (FP32). Provide this, [sparseIndices]+[sparseValues], or [fts].
   /// - [sparseIndices]: Sparse vector indices.
   /// - [sparseValues]: Sparse vector values.
+  /// - [fts]: FTS query payload.
   /// - [numCandidates]: Number of candidates to retrieve (default: 100).
   /// - [queryParams]: Optional index-specific query parameters.
+  /// - [ftsParams]: Optional FTS query parameters.
   SubQuery({
     required String fieldName,
     Float32List? vector,
     Uint32List? sparseIndices,
     Float32List? sparseValues,
+    FtsQuery? fts,
     int numCandidates = 100,
     QueryParams? queryParams,
+    FtsQueryParams? ftsParams,
   }) : _ptr = _b.zvec_sub_query_create() {
+    if (fts != null &&
+        (vector != null || sparseIndices != null || sparseValues != null)) {
+      _b.zvec_sub_query_destroy(_ptr);
+      throw ArgumentError(
+        'A SubQuery can carry either a vector payload or an FTS payload. '
+        'Use separate SubQuery instances for vector + FTS fusion.',
+      );
+    }
+
     // Set field name
     final namePtr = fieldName.toNativeUtf8().cast<Char>();
     try {
@@ -129,9 +143,17 @@ class SubQuery {
       }
     }
 
+    // Set FTS payload
+    if (fts != null) {
+      checkError(_b.zvec_sub_query_set_fts(_ptr, fts.nativePtr));
+    }
+
     // Set query params
     if (queryParams != null) {
       _attachSubQueryParams(_ptr, queryParams);
+    }
+    if (ftsParams != null) {
+      _attachFtsSubQueryParams(_ptr, ftsParams);
     }
   }
 
@@ -182,20 +204,31 @@ void _attachSubQueryParams(
   }
 }
 
+void _attachFtsSubQueryParams(
+  Pointer<zvec_sub_query_t> queryPtr,
+  FtsQueryParams queryParams,
+) {
+  final cloned = queryParams.cloneNativePtr();
+  var transferred = false;
+  try {
+    checkError(_b.zvec_sub_query_set_fts_params(queryPtr, cloned));
+    transferred = true;
+  } finally {
+    if (!transferred) queryParams.destroyNativePtr(cloned);
+  }
+}
+
 /// A multi-query that combines multiple sub-queries with reranking.
 ///
-/// Supports hybrid search combining dense vectors and sparse vectors using RRF
-/// or weighted fusion. FTS-only search is exposed by `VectorQuery.fts`; vector
-/// + FTS fusion can be exposed here once the native C API provides an FTS
-/// sub-query setter.
+/// Supports hybrid search combining dense vectors, sparse vectors, and FTS
+/// results using RRF or weighted fusion.
 ///
 /// Example:
 /// ```dart
 /// final query = MultiQuery(
 ///   subQueries: [
 ///     SubQuery(fieldName: 'embedding', vector: denseVector),
-///     SubQuery(fieldName: 'sparse_embedding',
-///              sparseIndices: indices, sparseValues: values),
+///     SubQuery(fieldName: 'content', fts: FtsQuery(matchString: 'database')),
 ///   ],
 ///   topk: 10,
 ///   rerank: RrfRerank(rankConstant: 60),
