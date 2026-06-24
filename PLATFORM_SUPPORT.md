@@ -111,8 +111,8 @@ bash scripts/build_ios.sh SIMULATORARM64
 
 The plugin has two distinct version numbers:
 
-- **Dart SDK version** (e.g. `0.4.0`): defined in `pubspec.yaml`, `ios/zvec.podspec`, and `android/build.gradle`. This is the version published to pub.dev.
-- **Native C engine version** (e.g. `0.4.0`): determined at build time by `git describe --tags` in the `third_party/zvec` submodule. Accessible at runtime via `Zvec.version` which calls the native `zvec_get_version()` function.
+- **Dart SDK version** (e.g. `0.5.1`): defined in `pubspec.yaml`, `ios/zvec.podspec`, and `android/build.gradle`. This is the version published to pub.dev.
+- **Native C engine version** (e.g. `0.5.1`): determined at build time by `git describe --tags` in the `third_party/zvec` submodule. Accessible at runtime via `Zvec.version` which calls the native `zvec_get_version()` function.
 
 ## Current Limitations
 

@@ -45,7 +45,7 @@ Or in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  zvec: ^0.4.0
+  zvec: ^0.5.1
 ```
 
 > **Platform support**
