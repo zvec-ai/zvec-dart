@@ -51,3 +51,6 @@ ios/Podfile.lock
 # Flutter-generated metadata & boilerplate
 .metadata
 test/
+!test/
+test/*
+!test/jieba_fts_integration_test.dart
