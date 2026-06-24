@@ -35,7 +35,8 @@ class CollectionOptions {
 
   /// Create from a native pointer. Used internally by Collection.
   factory CollectionOptions.fromNativePtr(
-      Pointer<zvec_collection_options_t> ptr) {
+    Pointer<zvec_collection_options_t> ptr,
+  ) {
     final opts = CollectionOptions._();
     opts._ptr = ptr;
     return opts;
@@ -64,12 +65,12 @@ class CollectionOptions {
   /// Set maximum buffer size in bytes.
   set maxBufferSize(int value) {
     checkError(
-        _b.zvec_collection_options_set_max_buffer_size(_nativePtr, value));
+      _b.zvec_collection_options_set_max_buffer_size(_nativePtr, value),
+    );
   }
 
   /// Whether the collection is opened in read-only mode.
-  bool get readOnly =>
-      _b.zvec_collection_options_get_read_only(_nativePtr);
+  bool get readOnly => _b.zvec_collection_options_get_read_only(_nativePtr);
 
   /// Set whether to open the collection in read-only mode.
   set readOnly(bool value) {

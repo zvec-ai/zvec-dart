@@ -1050,6 +1050,46 @@ class ZvecBindings {
       _zvec_config_data_get_brute_force_by_keys_ratioPtr
           .asFunction<double Function(ffi.Pointer<zvec_config_data_t>)>();
 
+  /// @brief Set FTS brute force by keys ratio in configuration data
+  /// @param config Configuration data pointer
+  /// @param ratio FTS brute force by keys ratio
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_config_data_set_fts_brute_force_by_keys_ratio(
+    ffi.Pointer<zvec_config_data_t> config,
+    double ratio,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_config_data_set_fts_brute_force_by_keys_ratio(config, ratio),
+    );
+  }
+
+  late final _zvec_config_data_set_fts_brute_force_by_keys_ratioPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_config_data_t>, ffi.Float)
+        >
+      >('zvec_config_data_set_fts_brute_force_by_keys_ratio');
+  late final _zvec_config_data_set_fts_brute_force_by_keys_ratio =
+      _zvec_config_data_set_fts_brute_force_by_keys_ratioPtr
+          .asFunction<int Function(ffi.Pointer<zvec_config_data_t>, double)>();
+
+  /// @brief Get FTS brute force by keys ratio from configuration data
+  /// @param config Configuration data pointer
+  /// @return float FTS brute force by keys ratio
+  double zvec_config_data_get_fts_brute_force_by_keys_ratio(
+    ffi.Pointer<zvec_config_data_t> config,
+  ) {
+    return _zvec_config_data_get_fts_brute_force_by_keys_ratio(config);
+  }
+
+  late final _zvec_config_data_get_fts_brute_force_by_keys_ratioPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Float Function(ffi.Pointer<zvec_config_data_t>)>
+      >('zvec_config_data_get_fts_brute_force_by_keys_ratio');
+  late final _zvec_config_data_get_fts_brute_force_by_keys_ratio =
+      _zvec_config_data_get_fts_brute_force_by_keys_ratioPtr
+          .asFunction<double Function(ffi.Pointer<zvec_config_data_t>)>();
+
   /// @brief Set optimize thread count in configuration data
   /// @param config Configuration data pointer
   /// @param thread_count Optimize thread count
@@ -1090,6 +1130,52 @@ class ZvecBindings {
       _zvec_config_data_get_optimize_thread_countPtr
           .asFunction<int Function(ffi.Pointer<zvec_config_data_t>)>();
 
+  /// @brief Set jieba dict directory in configuration data
+  /// @param dir Dict directory; NULL or empty leaves the field empty
+  zvec_error_code_t zvec_config_data_set_jieba_dict_dir(
+    ffi.Pointer<zvec_config_data_t> config,
+    ffi.Pointer<ffi.Char> dir,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_config_data_set_jieba_dict_dir(config, dir),
+    );
+  }
+
+  late final _zvec_config_data_set_jieba_dict_dirPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_config_data_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_config_data_set_jieba_dict_dir');
+  late final _zvec_config_data_set_jieba_dict_dir =
+      _zvec_config_data_set_jieba_dict_dirPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_config_data_t>, ffi.Pointer<ffi.Char>)
+          >();
+
+  /// @brief Get jieba dict directory from configuration data
+  /// @return Pointer owned by config (do not free); empty when unset
+  ffi.Pointer<ffi.Char> zvec_config_data_get_jieba_dict_dir(
+    ffi.Pointer<zvec_config_data_t> config,
+  ) {
+    return _zvec_config_data_get_jieba_dict_dir(config);
+  }
+
+  late final _zvec_config_data_get_jieba_dict_dirPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_config_data_t>)
+        >
+      >('zvec_config_data_get_jieba_dict_dir');
+  late final _zvec_config_data_get_jieba_dict_dir =
+      _zvec_config_data_get_jieba_dict_dirPtr
+          .asFunction<
+            ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_config_data_t>)
+          >();
+
   /// @brief Initialize ZVec library
   /// @param config Configuration data (optional, NULL means using default
   /// configuration)
@@ -1127,6 +1213,42 @@ class ZvecBindings {
       _lookup<ffi.NativeFunction<ffi.Bool Function()>>('zvec_is_initialized');
   late final _zvec_is_initialized = _zvec_is_initializedPtr
       .asFunction<bool Function()>();
+
+  /// @brief Set the process-wide default jieba dict directory.
+  ///
+  /// For language SDKs to call on module load. Thread-safe, decoupled from
+  /// zvec_initialize(); last writer wins. A subsequent zvec_initialize() with
+  /// non-empty config.jieba_dict_dir overrides this. JiebaTokenizer priority:
+  /// per-field > ZVEC_JIEBA_DICT_DIR > this.
+  ///
+  /// @param dir UTF-8 directory containing jieba.dict.utf8 + hmm_model.utf8;
+  /// NULL or empty clears the value.
+  void zvec_set_default_jieba_dict_dir(ffi.Pointer<ffi.Char> dir) {
+    return _zvec_set_default_jieba_dict_dir(dir);
+  }
+
+  late final _zvec_set_default_jieba_dict_dirPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+        'zvec_set_default_jieba_dict_dir',
+      );
+  late final _zvec_set_default_jieba_dict_dir =
+      _zvec_set_default_jieba_dict_dirPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+
+  /// @brief Get the process-wide default jieba dict directory.
+  /// @return Thread-local string valid until the next call on this thread;
+  /// empty when unset.
+  ffi.Pointer<ffi.Char> zvec_get_default_jieba_dict_dir() {
+    return _zvec_get_default_jieba_dict_dir();
+  }
+
+  late final _zvec_get_default_jieba_dict_dirPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'zvec_get_default_jieba_dict_dir',
+      );
+  late final _zvec_get_default_jieba_dict_dir =
+      _zvec_get_default_jieba_dict_dirPtr
+          .asFunction<ffi.Pointer<ffi.Char> Function()>();
 
   /// @brief Create index parameters
   /// @param index_type Index type
@@ -1325,6 +1447,116 @@ class ZvecBindings {
       _zvec_index_params_get_hnsw_ef_constructionPtr
           .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
 
+  /// @brief Set Vamana specific parameters
+  /// @param params Index parameters (must be VAMANA type)
+  /// @param max_degree Maximum out-degree (R) of every node (default: 64)
+  /// @param search_list_size Candidate list size during construction (default:
+  /// 100)
+  /// @param alpha RobustPrune alpha factor (default: 1.2)
+  /// @param saturate_graph Force every node to reach max_degree (default: false)
+  /// @param use_contiguous_memory Allocate contiguous memory arena (default:
+  /// false)
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_vamana_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    int max_degree,
+    int search_list_size,
+    double alpha,
+    bool saturate_graph,
+    bool use_contiguous_memory,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_set_vamana_params(
+        params,
+        max_degree,
+        search_list_size,
+        alpha,
+        saturate_graph,
+        use_contiguous_memory,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Int,
+            ffi.Int,
+            ffi.Float,
+            ffi.Bool,
+            ffi.Bool,
+          )
+        >
+      >('zvec_index_params_set_vamana_params');
+  late final _zvec_index_params_set_vamana_params =
+      _zvec_index_params_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              int,
+              int,
+              double,
+              bool,
+              bool,
+            )
+          >();
+
+  /// @brief Get Vamana parameters (all at once)
+  /// @param params Index parameters (must be VAMANA type)
+  /// @param[out] out_max_degree Maximum out-degree
+  /// @param[out] out_search_list_size Construction candidate list size
+  /// @param[out] out_alpha RobustPrune alpha factor
+  /// @param[out] out_saturate_graph Whether saturate graph is enabled
+  /// @param[out] out_use_contiguous_memory Whether contiguous memory is enabled
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_get_vamana_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    ffi.Pointer<ffi.Int> out_max_degree,
+    ffi.Pointer<ffi.Int> out_search_list_size,
+    ffi.Pointer<ffi.Float> out_alpha,
+    ffi.Pointer<ffi.Bool> out_saturate_graph,
+    ffi.Pointer<ffi.Bool> out_use_contiguous_memory,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_get_vamana_params(
+        params,
+        out_max_degree,
+        out_search_list_size,
+        out_alpha,
+        out_saturate_graph,
+        out_use_contiguous_memory,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_get_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Pointer<ffi.Int>,
+            ffi.Pointer<ffi.Int>,
+            ffi.Pointer<ffi.Float>,
+            ffi.Pointer<ffi.Bool>,
+            ffi.Pointer<ffi.Bool>,
+          )
+        >
+      >('zvec_index_params_get_vamana_params');
+  late final _zvec_index_params_get_vamana_params =
+      _zvec_index_params_get_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Float>,
+              ffi.Pointer<ffi.Bool>,
+              ffi.Pointer<ffi.Bool>,
+            )
+          >();
+
   /// @brief Set IVF specific parameters
   /// @param params Index parameters (must be IVF type)
   /// @param n_list Number of cluster centers
@@ -1475,6 +1707,98 @@ class ZvecBindings {
       _zvec_index_params_set_invert_paramsPtr
           .asFunction<
             int Function(ffi.Pointer<zvec_index_params_t>, bool, bool)
+          >();
+
+  /// @brief Set FTS index specific parameters
+  /// @param params Index parameters (must be FTS type)
+  /// @param tokenizer_name Tokenizer pipeline name (NULL keeps current value)
+  /// @param filters Token filter names (NULL keeps current value)
+  /// @param extra_params Additional tokenizer parameters (NULL keeps current
+  /// value)
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_fts_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    ffi.Pointer<ffi.Char> tokenizer_name,
+    ffi.Pointer<zvec_string_array_t> filters,
+    ffi.Pointer<ffi.Char> extra_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_set_fts_params(
+        params,
+        tokenizer_name,
+        filters,
+        extra_params,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_set_fts_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<zvec_string_array_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_index_params_set_fts_params');
+  late final _zvec_index_params_set_fts_params =
+      _zvec_index_params_set_fts_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<zvec_string_array_t>,
+              ffi.Pointer<ffi.Char>,
+            )
+          >();
+
+  /// @brief Get FTS index parameters (all at once)
+  /// @param params Index parameters (must be FTS type)
+  /// @param out_tokenizer_name Output parameter for tokenizer name (can be NULL,
+  /// owned by params, do not free)
+  /// @param out_filters Output parameter for filter list (can be NULL); caller
+  /// must call zvec_string_array_destroy() to free
+  /// @param out_extra_params Output parameter for extra params (can be NULL,
+  /// owned by params, do not free)
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_get_fts_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> out_tokenizer_name,
+    ffi.Pointer<ffi.Pointer<zvec_string_array_t>> out_filters,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> out_extra_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_index_params_get_fts_params(
+        params,
+        out_tokenizer_name,
+        out_filters,
+        out_extra_params,
+      ),
+    );
+  }
+
+  late final _zvec_index_params_get_fts_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_index_params_t>,
+            ffi.Pointer<ffi.Pointer<ffi.Char>>,
+            ffi.Pointer<ffi.Pointer<zvec_string_array_t>>,
+            ffi.Pointer<ffi.Pointer<ffi.Char>>,
+          )
+        >
+      >('zvec_index_params_get_fts_params');
+  late final _zvec_index_params_get_fts_params =
+      _zvec_index_params_get_fts_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_index_params_t>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.Pointer<ffi.Pointer<zvec_string_array_t>>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+            )
           >();
 
   /// @brief Create HNSW query parameters
@@ -2230,6 +2554,349 @@ class ZvecBindings {
       _zvec_query_params_flat_get_is_using_refinerPtr
           .asFunction<bool Function(ffi.Pointer<zvec_flat_query_params_t>)>();
 
+  /// @brief Create FTS query parameters
+  /// @param default_operator Default boolean operator for adjacent bare terms:
+  /// "OR" / "AND" (case-insensitive); NULL or "" keeps
+  /// the built-in default
+  /// @return zvec_fts_query_params_t* Pointer to the newly created FTS query
+  /// parameters
+  ffi.Pointer<zvec_fts_query_params_t> zvec_query_params_fts_create(
+    ffi.Pointer<ffi.Char> default_operator,
+  ) {
+    return _zvec_query_params_fts_create(default_operator);
+  }
+
+  late final _zvec_query_params_fts_createPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<zvec_fts_query_params_t> Function(ffi.Pointer<ffi.Char>)
+        >
+      >('zvec_query_params_fts_create');
+  late final _zvec_query_params_fts_create = _zvec_query_params_fts_createPtr
+      .asFunction<
+        ffi.Pointer<zvec_fts_query_params_t> Function(ffi.Pointer<ffi.Char>)
+      >();
+
+  /// @brief Destroy FTS query parameters
+  /// @param params FTS query parameters pointer
+  void zvec_query_params_fts_destroy(
+    ffi.Pointer<zvec_fts_query_params_t> params,
+  ) {
+    return _zvec_query_params_fts_destroy(params);
+  }
+
+  late final _zvec_query_params_fts_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<zvec_fts_query_params_t>)
+        >
+      >('zvec_query_params_fts_destroy');
+  late final _zvec_query_params_fts_destroy = _zvec_query_params_fts_destroyPtr
+      .asFunction<void Function(ffi.Pointer<zvec_fts_query_params_t>)>();
+
+  /// @brief Set default boolean operator
+  /// @param params FTS query parameters pointer
+  /// @param default_operator Default boolean operator
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_fts_set_default_operator(
+    ffi.Pointer<zvec_fts_query_params_t> params,
+    ffi.Pointer<ffi.Char> default_operator,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_fts_set_default_operator(params, default_operator),
+    );
+  }
+
+  late final _zvec_query_params_fts_set_default_operatorPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_fts_query_params_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_query_params_fts_set_default_operator');
+  late final _zvec_query_params_fts_set_default_operator =
+      _zvec_query_params_fts_set_default_operatorPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_fts_query_params_t>,
+              ffi.Pointer<ffi.Char>,
+            )
+          >();
+
+  /// @brief Get default boolean operator
+  /// @param params FTS query parameters pointer
+  /// @return const char* Default boolean operator (owned by params, do not free)
+  ffi.Pointer<ffi.Char> zvec_query_params_fts_get_default_operator(
+    ffi.Pointer<zvec_fts_query_params_t> params,
+  ) {
+    return _zvec_query_params_fts_get_default_operator(params);
+  }
+
+  late final _zvec_query_params_fts_get_default_operatorPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_query_params_t>)
+        >
+      >('zvec_query_params_fts_get_default_operator');
+  late final _zvec_query_params_fts_get_default_operator =
+      _zvec_query_params_fts_get_default_operatorPtr
+          .asFunction<
+            ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_query_params_t>)
+          >();
+
+  /// @brief Create Vamana query parameters
+  /// @param ef_search Search-time candidate list size (default: 200)
+  /// @param radius Search radius (default: 0.0)
+  /// @param is_linear Whether linear search (default: false)
+  /// @param is_using_refiner Whether using refiner (default: false)
+  /// @return zvec_vamana_query_params_t* Pointer to the newly created Vamana
+  /// query parameters
+  ffi.Pointer<zvec_vamana_query_params_t> zvec_query_params_vamana_create(
+    int ef_search,
+    double radius,
+    bool is_linear,
+    bool is_using_refiner,
+  ) {
+    return _zvec_query_params_vamana_create(
+      ef_search,
+      radius,
+      is_linear,
+      is_using_refiner,
+    );
+  }
+
+  late final _zvec_query_params_vamana_createPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<zvec_vamana_query_params_t> Function(
+            ffi.Int,
+            ffi.Float,
+            ffi.Bool,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_create');
+  late final _zvec_query_params_vamana_create =
+      _zvec_query_params_vamana_createPtr
+          .asFunction<
+            ffi.Pointer<zvec_vamana_query_params_t> Function(
+              int,
+              double,
+              bool,
+              bool,
+            )
+          >();
+
+  /// @brief Destroy Vamana query parameters
+  /// @param params Vamana query parameters pointer
+  void zvec_query_params_vamana_destroy(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_destroy(params);
+  }
+
+  late final _zvec_query_params_vamana_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_destroy');
+  late final _zvec_query_params_vamana_destroy =
+      _zvec_query_params_vamana_destroyPtr
+          .asFunction<void Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set search-time candidate list size
+  /// @param params Vamana query parameters pointer
+  /// @param ef_search Candidate list size
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_ef_search(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    int ef_search,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_ef_search(params, ef_search),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_ef_searchPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Int,
+          )
+        >
+      >('zvec_query_params_vamana_set_ef_search');
+  late final _zvec_query_params_vamana_set_ef_search =
+      _zvec_query_params_vamana_set_ef_searchPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, int)
+          >();
+
+  /// @brief Get search-time candidate list size
+  /// @param params Vamana query parameters pointer
+  /// @return int Candidate list size
+  int zvec_query_params_vamana_get_ef_search(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_ef_search(params);
+  }
+
+  late final _zvec_query_params_vamana_get_ef_searchPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_ef_search');
+  late final _zvec_query_params_vamana_get_ef_search =
+      _zvec_query_params_vamana_get_ef_searchPtr
+          .asFunction<int Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set search radius
+  /// @param params Vamana query parameters pointer
+  /// @param radius Search radius
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_radius(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    double radius,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_radius(params, radius),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_radiusPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Float,
+          )
+        >
+      >('zvec_query_params_vamana_set_radius');
+  late final _zvec_query_params_vamana_set_radius =
+      _zvec_query_params_vamana_set_radiusPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, double)
+          >();
+
+  /// @brief Get search radius
+  /// @param params Vamana query parameters pointer
+  /// @return float Search radius
+  double zvec_query_params_vamana_get_radius(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_radius(params);
+  }
+
+  late final _zvec_query_params_vamana_get_radiusPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Float Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_radius');
+  late final _zvec_query_params_vamana_get_radius =
+      _zvec_query_params_vamana_get_radiusPtr
+          .asFunction<
+            double Function(ffi.Pointer<zvec_vamana_query_params_t>)
+          >();
+
+  /// @brief Set linear search mode
+  /// @param params Vamana query parameters pointer
+  /// @param is_linear Whether linear search
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_is_linear(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    bool is_linear,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_is_linear(params, is_linear),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_is_linearPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_set_is_linear');
+  late final _zvec_query_params_vamana_set_is_linear =
+      _zvec_query_params_vamana_set_is_linearPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, bool)
+          >();
+
+  /// @brief Get linear search mode
+  /// @param params Vamana query parameters pointer
+  /// @return bool Whether linear search
+  bool zvec_query_params_vamana_get_is_linear(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_is_linear(params);
+  }
+
+  late final _zvec_query_params_vamana_get_is_linearPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_is_linear');
+  late final _zvec_query_params_vamana_get_is_linear =
+      _zvec_query_params_vamana_get_is_linearPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set whether to use refiner
+  /// @param params Vamana query parameters pointer
+  /// @param is_using_refiner Whether to use refiner
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_vamana_set_is_using_refiner(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+    bool is_using_refiner,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_query_params_vamana_set_is_using_refiner(params, is_using_refiner),
+    );
+  }
+
+  late final _zvec_query_params_vamana_set_is_using_refinerPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vamana_query_params_t>,
+            ffi.Bool,
+          )
+        >
+      >('zvec_query_params_vamana_set_is_using_refiner');
+  late final _zvec_query_params_vamana_set_is_using_refiner =
+      _zvec_query_params_vamana_set_is_using_refinerPtr
+          .asFunction<
+            int Function(ffi.Pointer<zvec_vamana_query_params_t>, bool)
+          >();
+
+  /// @brief Get whether to use refiner
+  /// @param params Vamana query parameters pointer
+  /// @return bool Whether to use refiner
+  bool zvec_query_params_vamana_get_is_using_refiner(
+    ffi.Pointer<zvec_vamana_query_params_t> params,
+  ) {
+    return _zvec_query_params_vamana_get_is_using_refiner(params);
+  }
+
+  late final _zvec_query_params_vamana_get_is_using_refinerPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<zvec_vamana_query_params_t>)
+        >
+      >('zvec_query_params_vamana_get_is_using_refiner');
+  late final _zvec_query_params_vamana_get_is_using_refiner =
+      _zvec_query_params_vamana_get_is_using_refinerPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
+
   /// @brief Create vector query
   /// @return zvec_vector_query_t* Pointer to the newly created vector query
   ffi.Pointer<zvec_vector_query_t> zvec_vector_query_create() {
@@ -2704,6 +3371,226 @@ class ZvecBindings {
               ffi.Pointer<zvec_flat_query_params_t>,
             )
           >();
+
+  /// @brief Set FTS query parameters (takes ownership)
+  /// @param query Vector query pointer
+  /// @param fts_params FTS query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_fts_params(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_fts_query_params_t> fts_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_vector_query_set_fts_params(query, fts_params),
+    );
+  }
+
+  late final _zvec_vector_query_set_fts_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vector_query_t>,
+            ffi.Pointer<zvec_fts_query_params_t>,
+          )
+        >
+      >('zvec_vector_query_set_fts_params');
+  late final _zvec_vector_query_set_fts_params =
+      _zvec_vector_query_set_fts_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_vector_query_t>,
+              ffi.Pointer<zvec_fts_query_params_t>,
+            )
+          >();
+
+  /// @brief Set Vamana query parameters for vector query
+  /// @param query Vector query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_vamana_params(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_vector_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_vector_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vector_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_vector_query_set_vamana_params');
+  late final _zvec_vector_query_set_vamana_params =
+      _zvec_vector_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_vector_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
+            )
+          >();
+
+  /// @brief Create FTS query payload
+  /// @return zvec_fts_t* Pointer to the newly created FTS query payload
+  ffi.Pointer<zvec_fts_t> zvec_fts_create() {
+    return _zvec_fts_create();
+  }
+
+  late final _zvec_fts_createPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<zvec_fts_t> Function()>>(
+        'zvec_fts_create',
+      );
+  late final _zvec_fts_create = _zvec_fts_createPtr
+      .asFunction<ffi.Pointer<zvec_fts_t> Function()>();
+
+  /// @brief Destroy FTS query payload
+  /// @param fts FTS query payload pointer
+  void zvec_fts_destroy(ffi.Pointer<zvec_fts_t> fts) {
+    return _zvec_fts_destroy(fts);
+  }
+
+  late final _zvec_fts_destroyPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<zvec_fts_t>)>>(
+        'zvec_fts_destroy',
+      );
+  late final _zvec_fts_destroy = _zvec_fts_destroyPtr
+      .asFunction<void Function(ffi.Pointer<zvec_fts_t>)>();
+
+  /// @brief Set FTS boolean / advanced query expression
+  /// @param fts FTS query payload pointer
+  /// @param query_string Query expression (NULL is treated as empty string)
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_fts_set_query_string(
+    ffi.Pointer<zvec_fts_t> fts,
+    ffi.Pointer<ffi.Char> query_string,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_fts_set_query_string(fts, query_string),
+    );
+  }
+
+  late final _zvec_fts_set_query_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_fts_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_fts_set_query_string');
+  late final _zvec_fts_set_query_string = _zvec_fts_set_query_stringPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_fts_t>, ffi.Pointer<ffi.Char>)
+      >();
+
+  /// @brief Set FTS natural-language match string
+  /// @param fts FTS query payload pointer
+  /// @param match_string Match string (NULL is treated as empty string)
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_fts_set_match_string(
+    ffi.Pointer<zvec_fts_t> fts,
+    ffi.Pointer<ffi.Char> match_string,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_fts_set_match_string(fts, match_string),
+    );
+  }
+
+  late final _zvec_fts_set_match_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_fts_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_fts_set_match_string');
+  late final _zvec_fts_set_match_string = _zvec_fts_set_match_stringPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_fts_t>, ffi.Pointer<ffi.Char>)
+      >();
+
+  /// @brief Get FTS query expression
+  /// @param fts FTS query payload pointer
+  /// @return const char* Query expression (owned by fts, do not free)
+  ffi.Pointer<ffi.Char> zvec_fts_get_query_string(ffi.Pointer<zvec_fts_t> fts) {
+    return _zvec_fts_get_query_string(fts);
+  }
+
+  late final _zvec_fts_get_query_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_t>)
+        >
+      >('zvec_fts_get_query_string');
+  late final _zvec_fts_get_query_string = _zvec_fts_get_query_stringPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_t>)>();
+
+  /// @brief Get FTS match string
+  /// @param fts FTS query payload pointer
+  /// @return const char* Match string (owned by fts, do not free)
+  ffi.Pointer<ffi.Char> zvec_fts_get_match_string(ffi.Pointer<zvec_fts_t> fts) {
+    return _zvec_fts_get_match_string(fts);
+  }
+
+  late final _zvec_fts_get_match_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_t>)
+        >
+      >('zvec_fts_get_match_string');
+  late final _zvec_fts_get_match_string = _zvec_fts_get_match_stringPtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_fts_t>)>();
+
+  /// @brief Set FTS payload on a vector query (payload is copied)
+  /// @param query Vector query pointer
+  /// @param fts FTS query payload pointer (NULL clears the payload)
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_fts(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_fts_t> fts,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_vector_query_set_fts(query, fts));
+  }
+
+  late final _zvec_vector_query_set_ftsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_vector_query_t>,
+            ffi.Pointer<zvec_fts_t>,
+          )
+        >
+      >('zvec_vector_query_set_fts');
+  late final _zvec_vector_query_set_fts = _zvec_vector_query_set_ftsPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_vector_query_t>, ffi.Pointer<zvec_fts_t>)
+      >();
+
+  /// @brief Get FTS payload attached to a vector query
+  /// @param query Vector query pointer
+  /// @return const zvec_fts_t* FTS payload (owned by query, do not free), or
+  /// NULL if no payload is attached
+  ffi.Pointer<zvec_fts_t> zvec_vector_query_get_fts(
+    ffi.Pointer<zvec_vector_query_t> query,
+  ) {
+    return _zvec_vector_query_get_fts(query);
+  }
+
+  late final _zvec_vector_query_get_ftsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<zvec_fts_t> Function(ffi.Pointer<zvec_vector_query_t>)
+        >
+      >('zvec_vector_query_get_fts');
+  late final _zvec_vector_query_get_fts = _zvec_vector_query_get_ftsPtr
+      .asFunction<
+        ffi.Pointer<zvec_fts_t> Function(ffi.Pointer<zvec_vector_query_t>)
+      >();
 
   /// @brief Create group by vector query
   /// @return zvec_group_by_vector_query_t* Pointer to the newly created group by
@@ -3288,6 +4175,798 @@ class ZvecBindings {
               ffi.Pointer<zvec_flat_query_params_t>,
             )
           >();
+
+  /// @brief Set Vamana query parameters (takes ownership)
+  /// @param query Group by vector query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_group_by_vector_query_set_vamana_params(
+    ffi.Pointer<zvec_group_by_vector_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_group_by_vector_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_group_by_vector_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_group_by_vector_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_group_by_vector_query_set_vamana_params');
+  late final _zvec_group_by_vector_query_set_vamana_params =
+      _zvec_group_by_vector_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_group_by_vector_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
+            )
+          >();
+
+  /// @brief Set RRF rerank strategy on a multi-query.
+  /// @param query Multi-query pointer
+  /// @param rank_constant RRF rank constant (default: 60)
+  /// @return Error code
+  zvec_error_code_t zvec_multi_query_set_rerank_rrf(
+    ffi.Pointer<zvec_multi_query_t> query,
+    int rank_constant,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_set_rerank_rrf(query, rank_constant),
+    );
+  }
+
+  late final _zvec_multi_query_set_rerank_rrfPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_multi_query_t>, ffi.Int)
+        >
+      >('zvec_multi_query_set_rerank_rrf');
+  late final _zvec_multi_query_set_rerank_rrf =
+      _zvec_multi_query_set_rerank_rrfPtr
+          .asFunction<int Function(ffi.Pointer<zvec_multi_query_t>, int)>();
+
+  /// @brief Set Weighted rerank strategy on a multi-query.
+  /// @param query Multi-query pointer
+  /// @param weights Array of per-sub-query weights
+  /// @param weight_count Number of weights
+  /// @return Error code
+  zvec_error_code_t zvec_multi_query_set_rerank_weighted(
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<ffi.Double> weights,
+    int weight_count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_set_rerank_weighted(query, weights, weight_count),
+    );
+  }
+
+  late final _zvec_multi_query_set_rerank_weightedPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<ffi.Double>,
+            ffi.Size,
+          )
+        >
+      >('zvec_multi_query_set_rerank_weighted');
+  late final _zvec_multi_query_set_rerank_weighted =
+      _zvec_multi_query_set_rerank_weightedPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_multi_query_t>,
+              ffi.Pointer<ffi.Double>,
+              int,
+            )
+          >();
+
+  /// @brief Create multi-query query
+  /// @return zvec_multi_query_t* Pointer to the newly created multi query
+  ffi.Pointer<zvec_multi_query_t> zvec_multi_query_create() {
+    return _zvec_multi_query_create();
+  }
+
+  late final _zvec_multi_query_createPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<zvec_multi_query_t> Function()>>(
+        'zvec_multi_query_create',
+      );
+  late final _zvec_multi_query_create = _zvec_multi_query_createPtr
+      .asFunction<ffi.Pointer<zvec_multi_query_t> Function()>();
+
+  /// @brief Destroy multi-query query
+  /// @param query Multi query pointer
+  void zvec_multi_query_destroy(ffi.Pointer<zvec_multi_query_t> query) {
+    return _zvec_multi_query_destroy(query);
+  }
+
+  late final _zvec_multi_query_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<zvec_multi_query_t>)>
+      >('zvec_multi_query_destroy');
+  late final _zvec_multi_query_destroy = _zvec_multi_query_destroyPtr
+      .asFunction<void Function(ffi.Pointer<zvec_multi_query_t>)>();
+
+  /// @brief Add a sub-query to the multi-query query
+  /// @param query Multi query pointer
+  /// @param sub_query Sub-query to add (copied, caller retains ownership)
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_multi_query_add_sub_query(
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<zvec_sub_query_t> sub_query,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_add_sub_query(query, sub_query),
+    );
+  }
+
+  late final _zvec_multi_query_add_sub_queryPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<zvec_sub_query_t>,
+          )
+        >
+      >('zvec_multi_query_add_sub_query');
+  late final _zvec_multi_query_add_sub_query =
+      _zvec_multi_query_add_sub_queryPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_multi_query_t>,
+              ffi.Pointer<zvec_sub_query_t>,
+            )
+          >();
+
+  /// @brief Get number of sub-queries
+  /// @param query Multi query pointer
+  /// @return size_t Number of sub-queries
+  int zvec_multi_query_get_sub_query_count(
+    ffi.Pointer<zvec_multi_query_t> query,
+  ) {
+    return _zvec_multi_query_get_sub_query_count(query);
+  }
+
+  late final _zvec_multi_query_get_sub_query_countPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Size Function(ffi.Pointer<zvec_multi_query_t>)>
+      >('zvec_multi_query_get_sub_query_count');
+  late final _zvec_multi_query_get_sub_query_count =
+      _zvec_multi_query_get_sub_query_countPtr
+          .asFunction<int Function(ffi.Pointer<zvec_multi_query_t>)>();
+
+  /// @brief Set topk
+  /// @param query Multi-vector query pointer
+  /// @param topk Number of results
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_multi_query_set_topk(
+    ffi.Pointer<zvec_multi_query_t> query,
+    int topk,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_multi_query_set_topk(query, topk));
+  }
+
+  late final _zvec_multi_query_set_topkPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_multi_query_t>, ffi.Int)
+        >
+      >('zvec_multi_query_set_topk');
+  late final _zvec_multi_query_set_topk = _zvec_multi_query_set_topkPtr
+      .asFunction<int Function(ffi.Pointer<zvec_multi_query_t>, int)>();
+
+  /// @brief Get topk
+  /// @param query Multi-vector query pointer
+  /// @return int Number of results
+  int zvec_multi_query_get_topk(ffi.Pointer<zvec_multi_query_t> query) {
+    return _zvec_multi_query_get_topk(query);
+  }
+
+  late final _zvec_multi_query_get_topkPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Int Function(ffi.Pointer<zvec_multi_query_t>)>
+      >('zvec_multi_query_get_topk');
+  late final _zvec_multi_query_get_topk = _zvec_multi_query_get_topkPtr
+      .asFunction<int Function(ffi.Pointer<zvec_multi_query_t>)>();
+
+  /// @brief Set filter expression
+  /// @param query Multi-vector query pointer
+  /// @param filter Filter expression string
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_multi_query_set_filter(
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<ffi.Char> filter,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_set_filter(query, filter),
+    );
+  }
+
+  late final _zvec_multi_query_set_filterPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_multi_query_set_filter');
+  late final _zvec_multi_query_set_filter = _zvec_multi_query_set_filterPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_multi_query_t>, ffi.Pointer<ffi.Char>)
+      >();
+
+  /// @brief Get filter expression
+  /// @param query Multi-vector query pointer
+  /// @return const char* Filter expression (owned by query, do not free)
+  ffi.Pointer<ffi.Char> zvec_multi_query_get_filter(
+    ffi.Pointer<zvec_multi_query_t> query,
+  ) {
+    return _zvec_multi_query_get_filter(query);
+  }
+
+  late final _zvec_multi_query_get_filterPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_multi_query_t>)
+        >
+      >('zvec_multi_query_get_filter');
+  late final _zvec_multi_query_get_filter = _zvec_multi_query_get_filterPtr
+      .asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_multi_query_t>)
+      >();
+
+  /// @brief Set whether to include vector data in results
+  /// @param query Multi-vector query pointer
+  /// @param include Whether to include vectors
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_multi_query_set_include_vector(
+    ffi.Pointer<zvec_multi_query_t> query,
+    bool include,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_set_include_vector(query, include),
+    );
+  }
+
+  late final _zvec_multi_query_set_include_vectorPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_multi_query_t>, ffi.Bool)
+        >
+      >('zvec_multi_query_set_include_vector');
+  late final _zvec_multi_query_set_include_vector =
+      _zvec_multi_query_set_include_vectorPtr
+          .asFunction<int Function(ffi.Pointer<zvec_multi_query_t>, bool)>();
+
+  /// @brief Get whether to include vector data in results
+  /// @param query Multi-vector query pointer
+  /// @return bool Whether to include vectors
+  bool zvec_multi_query_get_include_vector(
+    ffi.Pointer<zvec_multi_query_t> query,
+  ) {
+    return _zvec_multi_query_get_include_vector(query);
+  }
+
+  late final _zvec_multi_query_get_include_vectorPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<zvec_multi_query_t>)>
+      >('zvec_multi_query_get_include_vector');
+  late final _zvec_multi_query_get_include_vector =
+      _zvec_multi_query_get_include_vectorPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_multi_query_t>)>();
+
+  /// @brief Set output fields
+  /// @param query Multi-vector query pointer
+  /// @param fields Array of field names
+  /// @param count Number of fields
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_multi_query_set_output_fields(
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> fields,
+    int count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_set_output_fields(query, fields, count),
+    );
+  }
+
+  late final _zvec_multi_query_set_output_fieldsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<ffi.Pointer<ffi.Char>>,
+            ffi.Size,
+          )
+        >
+      >('zvec_multi_query_set_output_fields');
+  late final _zvec_multi_query_set_output_fields =
+      _zvec_multi_query_set_output_fieldsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_multi_query_t>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              int,
+            )
+          >();
+
+  /// @brief Get output fields
+  /// @param query Multi-vector query pointer
+  /// @param[out] fields Output array of field names (allocated by library)
+  /// @param[out] count Number of fields
+  /// @return zvec_error_code_t Error code
+  ///
+  /// @note The returned array is allocated by the library and should be freed
+  /// using zvec_free() when no longer needed. The individual string pointers
+  /// are owned by the query and must NOT be freed.
+  zvec_error_code_t zvec_multi_query_get_output_fields(
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<ffi.Pointer<ffi.Pointer<ffi.Char>>> fields,
+    ffi.Pointer<ffi.Size> count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_multi_query_get_output_fields(query, fields, count),
+    );
+  }
+
+  late final _zvec_multi_query_get_output_fieldsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<ffi.Pointer<ffi.Pointer<ffi.Char>>>,
+            ffi.Pointer<ffi.Size>,
+          )
+        >
+      >('zvec_multi_query_get_output_fields');
+  late final _zvec_multi_query_get_output_fields =
+      _zvec_multi_query_get_output_fieldsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_multi_query_t>,
+              ffi.Pointer<ffi.Pointer<ffi.Pointer<ffi.Char>>>,
+              ffi.Pointer<ffi.Size>,
+            )
+          >();
+
+  /// @brief Create sub-query
+  /// @return zvec_sub_query_t* Pointer to the newly created
+  /// sub-query
+  ffi.Pointer<zvec_sub_query_t> zvec_sub_query_create() {
+    return _zvec_sub_query_create();
+  }
+
+  late final _zvec_sub_query_createPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<zvec_sub_query_t> Function()>>(
+        'zvec_sub_query_create',
+      );
+  late final _zvec_sub_query_create = _zvec_sub_query_createPtr
+      .asFunction<ffi.Pointer<zvec_sub_query_t> Function()>();
+
+  /// @brief Destroy sub-query
+  /// @param query Sub-query pointer
+  void zvec_sub_query_destroy(ffi.Pointer<zvec_sub_query_t> query) {
+    return _zvec_sub_query_destroy(query);
+  }
+
+  late final _zvec_sub_query_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<zvec_sub_query_t>)>
+      >('zvec_sub_query_destroy');
+  late final _zvec_sub_query_destroy = _zvec_sub_query_destroyPtr
+      .asFunction<void Function(ffi.Pointer<zvec_sub_query_t>)>();
+
+  /// @brief Set number of candidates to retrieve per field
+  /// @param query Sub-query pointer
+  /// @param num_candidates Number of candidates
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_num_candidates(
+    ffi.Pointer<zvec_sub_query_t> query,
+    int num_candidates,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_num_candidates(query, num_candidates),
+    );
+  }
+
+  late final _zvec_sub_query_set_num_candidatesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_sub_query_t>, ffi.Int)
+        >
+      >('zvec_sub_query_set_num_candidates');
+  late final _zvec_sub_query_set_num_candidates =
+      _zvec_sub_query_set_num_candidatesPtr
+          .asFunction<int Function(ffi.Pointer<zvec_sub_query_t>, int)>();
+
+  /// @brief Get number of candidates
+  /// @param query Sub-query pointer
+  /// @return int Number of candidates
+  int zvec_sub_query_get_num_candidates(ffi.Pointer<zvec_sub_query_t> query) {
+    return _zvec_sub_query_get_num_candidates(query);
+  }
+
+  late final _zvec_sub_query_get_num_candidatesPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Int Function(ffi.Pointer<zvec_sub_query_t>)>
+      >('zvec_sub_query_get_num_candidates');
+  late final _zvec_sub_query_get_num_candidates =
+      _zvec_sub_query_get_num_candidatesPtr
+          .asFunction<int Function(ffi.Pointer<zvec_sub_query_t>)>();
+
+  /// @brief Set field name
+  /// @param query Sub-query pointer
+  /// @param field_name Field name
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_field_name(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<ffi.Char> field_name,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_field_name(query, field_name),
+    );
+  }
+
+  late final _zvec_sub_query_set_field_namePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('zvec_sub_query_set_field_name');
+  late final _zvec_sub_query_set_field_name = _zvec_sub_query_set_field_namePtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_sub_query_t>, ffi.Pointer<ffi.Char>)
+      >();
+
+  /// @brief Get field name
+  /// @param query Sub-query pointer
+  /// @return const char* Field name (owned by query, do not free)
+  ffi.Pointer<ffi.Char> zvec_sub_query_get_field_name(
+    ffi.Pointer<zvec_sub_query_t> query,
+  ) {
+    return _zvec_sub_query_get_field_name(query);
+  }
+
+  late final _zvec_sub_query_get_field_namePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_sub_query_t>)
+        >
+      >('zvec_sub_query_get_field_name');
+  late final _zvec_sub_query_get_field_name = _zvec_sub_query_get_field_namePtr
+      .asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_sub_query_t>)
+      >();
+
+  /// @brief Set query vector data
+  /// @param query Sub-query pointer
+  /// @param data Vector data pointer
+  /// @param size Data size in bytes
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_query_vector(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<ffi.Void> data,
+    int size,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_query_vector(query, data, size),
+    );
+  }
+
+  late final _zvec_sub_query_set_query_vectorPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<ffi.Void>,
+            ffi.Size,
+          )
+        >
+      >('zvec_sub_query_set_query_vector');
+  late final _zvec_sub_query_set_query_vector =
+      _zvec_sub_query_set_query_vectorPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<ffi.Void>,
+              int,
+            )
+          >();
+
+  /// @brief Set sparse vector indices and values
+  /// @param query Sub-query pointer
+  /// @param indices Array of uint32_t indices
+  /// @param values Array of float values
+  /// @param count Number of sparse vector entries
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_sparse_vector(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<ffi.Uint32> indices,
+    ffi.Pointer<ffi.Float> values,
+    int count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_sparse_vector(query, indices, values, count),
+    );
+  }
+
+  late final _zvec_sub_query_set_sparse_vectorPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<ffi.Uint32>,
+            ffi.Pointer<ffi.Float>,
+            ffi.Size,
+          )
+        >
+      >('zvec_sub_query_set_sparse_vector');
+  late final _zvec_sub_query_set_sparse_vector =
+      _zvec_sub_query_set_sparse_vectorPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<ffi.Uint32>,
+              ffi.Pointer<ffi.Float>,
+              int,
+            )
+          >();
+
+  /// @brief Set sparse vector indices
+  /// @param query Sub-query pointer
+  /// @param indices Array of uint32_t indices
+  /// @param count Number of indices
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_sparse_indices(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<ffi.Uint32> indices,
+    int count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_sparse_indices(query, indices, count),
+    );
+  }
+
+  late final _zvec_sub_query_set_sparse_indicesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<ffi.Uint32>,
+            ffi.Size,
+          )
+        >
+      >('zvec_sub_query_set_sparse_indices');
+  late final _zvec_sub_query_set_sparse_indices =
+      _zvec_sub_query_set_sparse_indicesPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<ffi.Uint32>,
+              int,
+            )
+          >();
+
+  /// @brief Set sparse vector values
+  /// @param query Sub-query pointer
+  /// @param values Array of float values
+  /// @param count Number of values
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_sparse_values(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<ffi.Float> values,
+    int count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_sparse_values(query, values, count),
+    );
+  }
+
+  late final _zvec_sub_query_set_sparse_valuesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<ffi.Float>,
+            ffi.Size,
+          )
+        >
+      >('zvec_sub_query_set_sparse_values');
+  late final _zvec_sub_query_set_sparse_values =
+      _zvec_sub_query_set_sparse_valuesPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<ffi.Float>,
+              int,
+            )
+          >();
+
+  /// @brief Set HNSW query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param hnsw_params HNSW query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_hnsw_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_hnsw_query_params_t> hnsw_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_hnsw_params(query, hnsw_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_hnsw_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_hnsw_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_hnsw_params');
+  late final _zvec_sub_query_set_hnsw_params =
+      _zvec_sub_query_set_hnsw_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_hnsw_query_params_t>,
+            )
+          >();
+
+  /// @brief Set IVF query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param ivf_params IVF query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_ivf_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_ivf_query_params_t> ivf_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_ivf_params(query, ivf_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_ivf_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_ivf_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_ivf_params');
+  late final _zvec_sub_query_set_ivf_params = _zvec_sub_query_set_ivf_paramsPtr
+      .asFunction<
+        int Function(
+          ffi.Pointer<zvec_sub_query_t>,
+          ffi.Pointer<zvec_ivf_query_params_t>,
+        )
+      >();
+
+  /// @brief Set Flat query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param flat_params Flat query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_flat_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_flat_query_params_t> flat_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_flat_params(query, flat_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_flat_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_flat_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_flat_params');
+  late final _zvec_sub_query_set_flat_params =
+      _zvec_sub_query_set_flat_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_flat_query_params_t>,
+            )
+          >();
+
+  /// @brief Set Vamana query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param vamana_params Vamana query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_vamana_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_vamana_query_params_t> vamana_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_vamana_params(query, vamana_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_vamana_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_vamana_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_vamana_params');
+  late final _zvec_sub_query_set_vamana_params =
+      _zvec_sub_query_set_vamana_paramsPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_vamana_query_params_t>,
+            )
+          >();
+
+  /// @brief Set FTS query parameters on a sub-query (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param fts_params FTS query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_fts_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_fts_query_params_t> fts_params,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_sub_query_set_fts_params(query, fts_params),
+    );
+  }
+
+  late final _zvec_sub_query_set_fts_paramsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_fts_query_params_t>,
+          )
+        >
+      >('zvec_sub_query_set_fts_params');
+  late final _zvec_sub_query_set_fts_params = _zvec_sub_query_set_fts_paramsPtr
+      .asFunction<
+        int Function(
+          ffi.Pointer<zvec_sub_query_t>,
+          ffi.Pointer<zvec_fts_query_params_t>,
+        )
+      >();
+
+  /// @brief Set FTS clause on a sub-query (copies the FTS clause)
+  /// @param query Sub-query pointer
+  /// @param fts FTS clause pointer, or NULL to clear
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_fts(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_fts_t> fts,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_sub_query_set_fts(query, fts));
+  }
+
+  late final _zvec_sub_query_set_ftsPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_sub_query_t>,
+            ffi.Pointer<zvec_fts_t>,
+          )
+        >
+      >('zvec_sub_query_set_fts');
+  late final _zvec_sub_query_set_fts = _zvec_sub_query_set_ftsPtr
+      .asFunction<
+        int Function(ffi.Pointer<zvec_sub_query_t>, ffi.Pointer<zvec_fts_t>)
+      >();
 
   /// @brief Create collection options
   /// @return zvec_collection_options_t* Pointer to the newly created collection
@@ -5683,10 +7362,54 @@ class ZvecBindings {
         )
       >();
 
+  /// @brief Multi-query with multiple sub-queries and re-ranking
+  /// @param collection Collection handle
+  /// @param query Multi-query query parameters pointer
+  /// @param[out] results Returned document array (needs to be freed by calling
+  /// zvec_docs_free)
+  /// @param[out] result_count Number of returned results
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_collection_multi_query(
+    ffi.Pointer<zvec_collection_t> collection,
+    ffi.Pointer<zvec_multi_query_t> query,
+    ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>> results,
+    ffi.Pointer<ffi.Size> result_count,
+  ) {
+    return zvec_error_code_t.fromValue(
+      _zvec_collection_multi_query(collection, query, results, result_count),
+    );
+  }
+
+  late final _zvec_collection_multi_queryPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+            ffi.Pointer<zvec_collection_t>,
+            ffi.Pointer<zvec_multi_query_t>,
+            ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>>,
+            ffi.Pointer<ffi.Size>,
+          )
+        >
+      >('zvec_collection_multi_query');
+  late final _zvec_collection_multi_query = _zvec_collection_multi_queryPtr
+      .asFunction<
+        int Function(
+          ffi.Pointer<zvec_collection_t>,
+          ffi.Pointer<zvec_multi_query_t>,
+          ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>>,
+          ffi.Pointer<ffi.Size>,
+        )
+      >();
+
   /// @brief Fetch documents by primary keys
   /// @param collection Collection handle
   /// @param primary_keys Primary key array
   /// @param count Number of primary keys
+  /// @param output_fields Array of field names to return; NULL means return all
+  /// fields
+  /// @param output_field_count Number of output_fields entries; 0 if
+  /// output_fields is NULL
+  /// @param include_vector Whether to include vector data in results
   /// @param[out] documents Returned document array (needs to be freed by calling
   /// zvec_docs_free)
   /// @param[out] found_count Number of found documents
@@ -5695,6 +7418,9 @@ class ZvecBindings {
     ffi.Pointer<zvec_collection_t> collection,
     ffi.Pointer<ffi.Pointer<ffi.Char>> primary_keys,
     int count,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> output_fields,
+    int output_field_count,
+    bool include_vector,
     ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>> documents,
     ffi.Pointer<ffi.Size> found_count,
   ) {
@@ -5703,6 +7429,9 @@ class ZvecBindings {
         collection,
         primary_keys,
         count,
+        output_fields,
+        output_field_count,
+        include_vector,
         documents,
         found_count,
       ),
@@ -5716,6 +7445,9 @@ class ZvecBindings {
             ffi.Pointer<zvec_collection_t>,
             ffi.Pointer<ffi.Pointer<ffi.Char>>,
             ffi.Size,
+            ffi.Pointer<ffi.Pointer<ffi.Char>>,
+            ffi.Size,
+            ffi.Bool,
             ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>>,
             ffi.Pointer<ffi.Size>,
           )
@@ -5727,6 +7459,9 @@ class ZvecBindings {
           ffi.Pointer<zvec_collection_t>,
           ffi.Pointer<ffi.Pointer<ffi.Char>>,
           int,
+          ffi.Pointer<ffi.Pointer<ffi.Char>>,
+          int,
+          bool,
           ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>>,
           ffi.Pointer<ffi.Size>,
         )
@@ -6521,45 +8256,6 @@ class ZvecBindings {
   late final _zvec_doc_memory_usage = _zvec_doc_memory_usagePtr
       .asFunction<int Function(ffi.Pointer<zvec_doc_t>)>();
 
-  /// @brief Validate document against Schema
-  ///
-  /// @param doc Document object pointer
-  /// @param schema Schema object pointer
-  /// @param is_update Whether it's an update operation
-  /// @param[out] error_msg Error message (needs manual release)
-  /// @return zvec_error_code_t Error code
-  zvec_error_code_t zvec_doc_validate(
-    ffi.Pointer<zvec_doc_t> doc,
-    ffi.Pointer<zvec_collection_schema_t> schema,
-    bool is_update,
-    ffi.Pointer<ffi.Pointer<ffi.Char>> error_msg,
-  ) {
-    return zvec_error_code_t.fromValue(
-      _zvec_doc_validate(doc, schema, is_update, error_msg),
-    );
-  }
-
-  late final _zvec_doc_validatePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.UnsignedInt Function(
-            ffi.Pointer<zvec_doc_t>,
-            ffi.Pointer<zvec_collection_schema_t>,
-            ffi.Bool,
-            ffi.Pointer<ffi.Pointer<ffi.Char>>,
-          )
-        >
-      >('zvec_doc_validate');
-  late final _zvec_doc_validate = _zvec_doc_validatePtr
-      .asFunction<
-        int Function(
-          ffi.Pointer<zvec_doc_t>,
-          ffi.Pointer<zvec_collection_schema_t>,
-          bool,
-          ffi.Pointer<ffi.Pointer<ffi.Char>>,
-        )
-      >();
-
   /// @brief Get detailed string representation of document
   ///
   /// @param doc Document object pointer
@@ -6882,17 +8578,27 @@ final class zvec_ivf_query_params_t extends ffi.Opaque {}
 
 final class zvec_flat_query_params_t extends ffi.Opaque {}
 
+final class zvec_fts_query_params_t extends ffi.Opaque {}
+
+final class zvec_vamana_query_params_t extends ffi.Opaque {}
+
 final class zvec_vector_query_t extends ffi.Opaque {}
 
 final class zvec_group_by_vector_query_t extends ffi.Opaque {}
 
-final class zvec_collection_options_t extends ffi.Opaque {}
+final class zvec_fts_t extends ffi.Opaque {}
 
-final class zvec_collection_stats_t extends ffi.Opaque {}
+final class zvec_doc_t extends ffi.Opaque {}
 
 final class zvec_collection_schema_t extends ffi.Opaque {}
 
-final class zvec_doc_t extends ffi.Opaque {}
+final class zvec_multi_query_t extends ffi.Opaque {}
+
+final class zvec_sub_query_t extends ffi.Opaque {}
+
+final class zvec_collection_options_t extends ffi.Opaque {}
+
+final class zvec_collection_stats_t extends ffi.Opaque {}
 
 /// @brief Per-document status returned by detailed DML APIs.
 /// @note Uses ordered style: result index corresponds to input document index.
@@ -7044,7 +8750,11 @@ const int ZVEC_INDEX_TYPE_IVF = 2;
 
 const int ZVEC_INDEX_TYPE_FLAT = 3;
 
+const int ZVEC_INDEX_TYPE_VAMANA = 6;
+
 const int ZVEC_INDEX_TYPE_INVERT = 10;
+
+const int ZVEC_INDEX_TYPE_FTS = 11;
 
 const int ZVEC_METRIC_TYPE_UNDEFINED = 0;
 

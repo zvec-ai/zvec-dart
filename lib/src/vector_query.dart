@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
 import 'errors.dart';
+import 'fts_query.dart';
 import 'query_params.dart';
 import 'zvec_bindings.dart';
 import 'zvec_library.dart';
@@ -45,6 +46,9 @@ class VectorQuery {
   /// - [includeVector]: Whether to include vectors in results (default: false).
   /// - [outputFields]: Optional list of fields to include in results.
   /// - [queryParams]: Optional index-specific query parameters.
+  /// - [fts]: Deprecated. FTS cannot be combined with vector payloads in a
+  ///   single native search query; use [VectorQuery.fts] for FTS-only search.
+  /// - [ftsParams]: Deprecated. Use [VectorQuery.fts] for FTS-only search.
   VectorQuery({
     required String fieldName,
     required Float32List vector,
@@ -53,31 +57,89 @@ class VectorQuery {
     bool includeVector = false,
     List<String>? outputFields,
     QueryParams? queryParams,
+    FtsQuery? fts,
+    FtsQueryParams? ftsParams,
   }) : _ptr = _b.zvec_vector_query_create() {
-    // Set field name
+    if (fts != null || ftsParams != null) {
+      _b.zvec_vector_query_destroy(_ptr);
+      throw ArgumentError(
+        'FTS cannot be combined with a vector payload in one VectorQuery. '
+        'Use VectorQuery.fts(...) for FTS-only search.',
+      );
+    }
+
+    _setFieldName(fieldName);
+    _setVector(vector);
+    _setTopk(topk);
+    _setFilter(filter);
+    _setIncludeVector(includeVector);
+    _setOutputFields(outputFields);
+    if (queryParams != null) {
+      _attachVectorQueryParams(_ptr, queryParams);
+    }
+  }
+
+  /// Create an FTS-only query.
+  ///
+  /// Native search queries carry either a vector clause or an FTS clause. For
+  /// vector + FTS fusion, use multi-query with separate sub-query instances.
+  VectorQuery.fts({
+    required String fieldName,
+    required FtsQuery fts,
+    int topk = 10,
+    String? filter,
+    bool includeVector = false,
+    List<String>? outputFields,
+    FtsQueryParams? ftsParams,
+  }) : _ptr = _b.zvec_vector_query_create() {
+    _setFieldName(fieldName);
+    _setTopk(topk);
+    _setFilter(filter);
+    _setIncludeVector(includeVector);
+    _setOutputFields(outputFields);
+    checkError(_b.zvec_vector_query_set_fts(_ptr, fts.nativePtr));
+    if (ftsParams != null) {
+      _attachFtsQueryParams(_ptr, ftsParams);
+    }
+  }
+
+  final Pointer<zvec_vector_query_t> _ptr;
+
+  /// The native pointer for internal use.
+  Pointer<zvec_vector_query_t> get nativePtr => _ptr;
+
+  void _setFieldName(String fieldName) {
     final namePtr = fieldName.toNativeUtf8().cast<Char>();
     try {
       checkError(_b.zvec_vector_query_set_field_name(_ptr, namePtr));
     } finally {
       calloc.free(namePtr);
     }
+  }
 
-    // Set vector data
+  void _setVector(Float32List vector) {
     final dataPtr = calloc<Float>(vector.length);
     try {
       for (var i = 0; i < vector.length; i++) {
         dataPtr[i] = vector[i];
       }
-      checkError(_b.zvec_vector_query_set_query_vector(
-          _ptr, dataPtr.cast(), vector.length * sizeOf<Float>()));
+      checkError(
+        _b.zvec_vector_query_set_query_vector(
+          _ptr,
+          dataPtr.cast(),
+          vector.length * sizeOf<Float>(),
+        ),
+      );
     } finally {
       calloc.free(dataPtr);
     }
+  }
 
-    // Set topk
+  void _setTopk(int topk) {
     checkError(_b.zvec_vector_query_set_topk(_ptr, topk));
+  }
 
-    // Set filter
+  void _setFilter(String? filter) {
     if (filter != null) {
       final filterPtr = filter.toNativeUtf8().cast<Char>();
       try {
@@ -86,11 +148,13 @@ class VectorQuery {
         calloc.free(filterPtr);
       }
     }
+  }
 
-    // Set include vector
+  void _setIncludeVector(bool includeVector) {
     checkError(_b.zvec_vector_query_set_include_vector(_ptr, includeVector));
+  }
 
-    // Set output fields
+  void _setOutputFields(List<String>? outputFields) {
     if (outputFields != null && outputFields.isNotEmpty) {
       final fieldsPtr = calloc<Pointer<Char>>(outputFields.length);
       final nativePtrs = <Pointer<Utf8>>[];
@@ -100,8 +164,13 @@ class VectorQuery {
           nativePtrs.add(p);
           fieldsPtr[i] = p.cast();
         }
-        checkError(_b.zvec_vector_query_set_output_fields(
-            _ptr, fieldsPtr, outputFields.length));
+        checkError(
+          _b.zvec_vector_query_set_output_fields(
+            _ptr,
+            fieldsPtr,
+            outputFields.length,
+          ),
+        );
       } finally {
         for (final p in nativePtrs) {
           calloc.free(p);
@@ -109,30 +178,103 @@ class VectorQuery {
         calloc.free(fieldsPtr);
       }
     }
-
-    // Set query params
-    if (queryParams != null) {
-      if (queryParams is HnswQueryParams) {
-        checkError(
-            _b.zvec_vector_query_set_hnsw_params(_ptr, queryParams.nativePtr));
-      } else if (queryParams is IVFQueryParams) {
-        checkError(
-            _b.zvec_vector_query_set_ivf_params(_ptr, queryParams.nativePtr));
-      } else if (queryParams is FlatQueryParams) {
-        checkError(
-            _b.zvec_vector_query_set_flat_params(_ptr, queryParams.nativePtr));
-      }
-    }
   }
-
-  final Pointer<zvec_vector_query_t> _ptr;
-
-  /// The native pointer for internal use.
-  Pointer<zvec_vector_query_t> get nativePtr => _ptr;
 
   /// Destroy the native query.
   void destroy() {
     _b.zvec_vector_query_destroy(_ptr);
+  }
+}
+
+void _attachVectorQueryParams(
+  Pointer<zvec_vector_query_t> queryPtr,
+  QueryParams queryParams,
+) {
+  if (queryParams is HnswQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(_b.zvec_vector_query_set_hnsw_params(queryPtr, cloned));
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else if (queryParams is IVFQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(_b.zvec_vector_query_set_ivf_params(queryPtr, cloned));
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else if (queryParams is FlatQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(_b.zvec_vector_query_set_flat_params(queryPtr, cloned));
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else {
+    throw ArgumentError('Unsupported vector query params: $queryParams');
+  }
+}
+
+void _attachFtsQueryParams(
+  Pointer<zvec_vector_query_t> queryPtr,
+  FtsQueryParams queryParams,
+) {
+  final cloned = queryParams.cloneNativePtr();
+  var transferred = false;
+  try {
+    checkError(_b.zvec_vector_query_set_fts_params(queryPtr, cloned));
+    transferred = true;
+  } finally {
+    if (!transferred) queryParams.destroyNativePtr(cloned);
+  }
+}
+
+void _attachGroupByQueryParams(
+  Pointer<zvec_group_by_vector_query_t> queryPtr,
+  QueryParams queryParams,
+) {
+  if (queryParams is HnswQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(
+        _b.zvec_group_by_vector_query_set_hnsw_params(queryPtr, cloned),
+      );
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else if (queryParams is IVFQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(
+        _b.zvec_group_by_vector_query_set_ivf_params(queryPtr, cloned),
+      );
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else if (queryParams is FlatQueryParams) {
+    final cloned = queryParams.cloneNativePtr();
+    var transferred = false;
+    try {
+      checkError(
+        _b.zvec_group_by_vector_query_set_flat_params(queryPtr, cloned),
+      );
+      transferred = true;
+    } finally {
+      if (!transferred) queryParams.destroyNativePtr(cloned);
+    }
+  } else {
+    throw ArgumentError('Unsupported group-by query params: $queryParams');
   }
 }
 
@@ -174,7 +316,8 @@ class GroupByVectorQuery {
     final gbPtr = groupByFieldName.toNativeUtf8().cast<Char>();
     try {
       checkError(
-          _b.zvec_group_by_vector_query_set_group_by_field_name(_ptr, gbPtr));
+        _b.zvec_group_by_vector_query_set_group_by_field_name(_ptr, gbPtr),
+      );
     } finally {
       calloc.free(gbPtr);
     }
@@ -185,8 +328,13 @@ class GroupByVectorQuery {
       for (var i = 0; i < vector.length; i++) {
         dataPtr[i] = vector[i];
       }
-      checkError(_b.zvec_group_by_vector_query_set_query_vector(
-          _ptr, dataPtr.cast(), vector.length * sizeOf<Float>()));
+      checkError(
+        _b.zvec_group_by_vector_query_set_query_vector(
+          _ptr,
+          dataPtr.cast(),
+          vector.length * sizeOf<Float>(),
+        ),
+      );
     } finally {
       calloc.free(dataPtr);
     }
@@ -199,8 +347,7 @@ class GroupByVectorQuery {
     if (filter != null) {
       final filterPtr = filter.toNativeUtf8().cast<Char>();
       try {
-        checkError(
-            _b.zvec_group_by_vector_query_set_filter(_ptr, filterPtr));
+        checkError(_b.zvec_group_by_vector_query_set_filter(_ptr, filterPtr));
       } finally {
         calloc.free(filterPtr);
       }
@@ -208,7 +355,8 @@ class GroupByVectorQuery {
 
     // Set include vector
     checkError(
-        _b.zvec_group_by_vector_query_set_include_vector(_ptr, includeVector));
+      _b.zvec_group_by_vector_query_set_include_vector(_ptr, includeVector),
+    );
 
     // Set output fields
     if (outputFields != null && outputFields.isNotEmpty) {
@@ -220,8 +368,13 @@ class GroupByVectorQuery {
           nativePtrs.add(p);
           fieldsPtr[i] = p.cast();
         }
-        checkError(_b.zvec_group_by_vector_query_set_output_fields(
-            _ptr, fieldsPtr, outputFields.length));
+        checkError(
+          _b.zvec_group_by_vector_query_set_output_fields(
+            _ptr,
+            fieldsPtr,
+            outputFields.length,
+          ),
+        );
       } finally {
         for (final p in nativePtrs) {
           calloc.free(p);
@@ -232,16 +385,7 @@ class GroupByVectorQuery {
 
     // Set query params
     if (queryParams != null) {
-      if (queryParams is HnswQueryParams) {
-        checkError(_b.zvec_group_by_vector_query_set_hnsw_params(
-            _ptr, queryParams.nativePtr));
-      } else if (queryParams is IVFQueryParams) {
-        checkError(_b.zvec_group_by_vector_query_set_ivf_params(
-            _ptr, queryParams.nativePtr));
-      } else if (queryParams is FlatQueryParams) {
-        checkError(_b.zvec_group_by_vector_query_set_flat_params(
-            _ptr, queryParams.nativePtr));
-      }
+      _attachGroupByQueryParams(_ptr, queryParams);
     }
   }
 

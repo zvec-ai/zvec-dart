@@ -65,6 +65,11 @@ void main() {
       expect(IndexType.fromValue(10), IndexType.invert);
       expect(IndexType.fromValue(999), IndexType.undefined);
     });
+
+    test('fts enum value is 11', () {
+      expect(IndexType.fts.value, 11);
+      expect(IndexType.fromValue(11), IndexType.fts);
+    });
   });
 
   group('MetricType', () {
@@ -128,6 +133,34 @@ void main() {
     });
   });
 
+  group('RerankStrategy', () {
+    test('RrfRerank default rankConstant', () {
+      const rrf = RrfRerank();
+      expect(rrf.rankConstant, 60);
+    });
+
+    test('RrfRerank custom rankConstant', () {
+      const rrf = RrfRerank(rankConstant: 100);
+      expect(rrf.rankConstant, 100);
+    });
+
+    test('WeightedRerank stores weights', () {
+      const wr = WeightedRerank(weights: [0.7, 0.3]);
+      expect(wr.weights, [0.7, 0.3]);
+      expect(wr.weights.length, 2);
+    });
+
+    test('RrfRerank is RerankStrategy', () {
+      const rrf = RrfRerank();
+      expect(rrf, isA<RerankStrategy>());
+    });
+
+    test('WeightedRerank is RerankStrategy', () {
+      const wr = WeightedRerank(weights: [1.0]);
+      expect(wr, isA<RerankStrategy>());
+    });
+  });
+
   group('WriteResult', () {
     test('properties', () {
       final r = WriteResult(8, 2);
@@ -145,6 +178,24 @@ void main() {
     test('toString', () {
       final r = WriteResult(3, 1);
       expect(r.toString(), 'WriteResult(success=3, error=1)');
+    });
+
+    test('details expose per-document errors', () {
+      const status = WriteStatus(
+        index: 1,
+        pk: 'pk_1',
+        code: ZvecErrorCode.internalError,
+        message: 'vector indexer not found',
+      );
+      final r = WriteResult(1, 1, const [
+        WriteStatus(index: 0, code: ZvecErrorCode.ok),
+        status,
+      ]);
+
+      expect(r.details.length, 2);
+      expect(r.errors, [status]);
+      expect(r.errorMessages, ['vector indexer not found']);
+      expect(r.toString(), contains('vector indexer not found'));
     });
   });
 }

@@ -35,4 +35,5 @@ target_compile_definitions(zvec_plugin PUBLIC DART_SHARED_LIB)
 if (ANDROID)
   # Support Android 15 16k page size
   target_link_options(zvec_plugin PRIVATE "-Wl,-z,max-page-size=16384")
+  target_link_libraries(zvec_plugin PRIVATE dl log)
 endif()

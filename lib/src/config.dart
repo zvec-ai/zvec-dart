@@ -31,8 +31,9 @@ class LogConfig {
 
   /// Create a console log configuration.
   factory LogConfig.console({LogLevel level = LogLevel.info}) {
-    final ptr = ZvecLibrary.bindings
-        .zvec_config_log_create_console(zvec_log_level_t.fromValue(level.value));
+    final ptr = ZvecLibrary.bindings.zvec_config_log_create_console(
+      zvec_log_level_t.fromValue(level.value),
+    );
     return LogConfig._(ptr);
   }
 
@@ -92,7 +93,8 @@ class ConfigData {
   /// Set memory limit in bytes.
   void setMemoryLimit(int bytes) {
     checkError(
-        ZvecLibrary.bindings.zvec_config_data_set_memory_limit(_nativePtr, bytes));
+      ZvecLibrary.bindings.zvec_config_data_set_memory_limit(_nativePtr, bytes),
+    );
   }
 
   /// Get memory limit in bytes.
@@ -101,14 +103,22 @@ class ConfigData {
 
   /// Set log configuration. Ownership of [logConfig] is transferred.
   void setLogConfig(LogConfig logConfig) {
-    checkError(ZvecLibrary.bindings
-        .zvec_config_data_set_log_config(_nativePtr, logConfig.nativePtr));
+    checkError(
+      ZvecLibrary.bindings.zvec_config_data_set_log_config(
+        _nativePtr,
+        logConfig.nativePtr,
+      ),
+    );
   }
 
   /// Set the number of threads used for query operations.
   void setQueryThreadCount(int count) {
-    checkError(ZvecLibrary.bindings
-        .zvec_config_data_set_query_thread_count(_nativePtr, count));
+    checkError(
+      ZvecLibrary.bindings.zvec_config_data_set_query_thread_count(
+        _nativePtr,
+        count,
+      ),
+    );
   }
 
   /// Get the number of threads used for query operations.
@@ -117,13 +127,55 @@ class ConfigData {
 
   /// Set the number of threads used for optimize operations.
   void setOptimizeThreadCount(int count) {
-    checkError(ZvecLibrary.bindings
-        .zvec_config_data_set_optimize_thread_count(_nativePtr, count));
+    checkError(
+      ZvecLibrary.bindings.zvec_config_data_set_optimize_thread_count(
+        _nativePtr,
+        count,
+      ),
+    );
   }
 
   /// Get the number of threads used for optimize operations.
-  int get optimizeThreadCount =>
-      ZvecLibrary.bindings.zvec_config_data_get_optimize_thread_count(_nativePtr);
+  int get optimizeThreadCount => ZvecLibrary.bindings
+      .zvec_config_data_get_optimize_thread_count(_nativePtr);
+
+  /// Set the FTS brute-force by keys ratio.
+  void setFtsBruteForceByKeysRatio(double ratio) {
+    checkError(
+      ZvecLibrary.bindings.zvec_config_data_set_fts_brute_force_by_keys_ratio(
+        _nativePtr,
+        ratio,
+      ),
+    );
+  }
+
+  /// Get the FTS brute-force by keys ratio.
+  double get ftsBruteForceByKeysRatio => ZvecLibrary.bindings
+      .zvec_config_data_get_fts_brute_force_by_keys_ratio(_nativePtr);
+
+  /// Set the Jieba dictionary directory.
+  void setJiebaDictDir(String dir) {
+    final dirPtr = dir.toNativeUtf8().cast<Char>();
+    try {
+      checkError(
+        ZvecLibrary.bindings.zvec_config_data_set_jieba_dict_dir(
+          _nativePtr,
+          dirPtr,
+        ),
+      );
+    } finally {
+      calloc.free(dirPtr);
+    }
+  }
+
+  /// Get the Jieba dictionary directory.
+  String? get jiebaDictDir {
+    final ptr = ZvecLibrary.bindings.zvec_config_data_get_jieba_dict_dir(
+      _nativePtr,
+    );
+    if (ptr == nullptr) return null;
+    return ptr.cast<Utf8>().toDartString();
+  }
 
   /// Destroy the native config data.
   void destroy() {
@@ -154,8 +206,7 @@ class Zvec {
   }
 
   /// Check if the library has been initialized.
-  static bool get isInitialized =>
-      ZvecLibrary.bindings.zvec_is_initialized();
+  static bool get isInitialized => ZvecLibrary.bindings.zvec_is_initialized();
 
   /// Get the library version string.
   static String get version {
@@ -164,18 +215,32 @@ class Zvec {
   }
 
   /// Get the major version number.
-  static int get versionMajor =>
-      ZvecLibrary.bindings.zvec_get_version_major();
+  static int get versionMajor => ZvecLibrary.bindings.zvec_get_version_major();
 
   /// Get the minor version number.
-  static int get versionMinor =>
-      ZvecLibrary.bindings.zvec_get_version_minor();
+  static int get versionMinor => ZvecLibrary.bindings.zvec_get_version_minor();
 
   /// Get the patch version number.
-  static int get versionPatch =>
-      ZvecLibrary.bindings.zvec_get_version_patch();
+  static int get versionPatch => ZvecLibrary.bindings.zvec_get_version_patch();
 
   /// Check if the library version is compatible with the given requirements.
   static bool checkVersion(int major, int minor, int patch) =>
       ZvecLibrary.bindings.zvec_check_version(major, minor, patch);
+
+  /// Set the global default Jieba dictionary directory.
+  static void setDefaultJiebaDictDir(String dir) {
+    final dirPtr = dir.toNativeUtf8().cast<Char>();
+    try {
+      ZvecLibrary.bindings.zvec_set_default_jieba_dict_dir(dirPtr);
+    } finally {
+      calloc.free(dirPtr);
+    }
+  }
+
+  /// Get the global default Jieba dictionary directory.
+  static String? get defaultJiebaDictDir {
+    final ptr = ZvecLibrary.bindings.zvec_get_default_jieba_dict_dir();
+    if (ptr == nullptr) return null;
+    return ptr.cast<Utf8>().toDartString();
+  }
 }

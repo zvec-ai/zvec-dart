@@ -40,7 +40,12 @@ class FieldSchema {
   }) : _ownsPtr = true {
     final namePtr = name.toNativeUtf8().cast<Char>();
     try {
-      _ptr = _b.zvec_field_schema_create(namePtr, dataType.value, nullable, dimension);
+      _ptr = _b.zvec_field_schema_create(
+        namePtr,
+        dataType.value,
+        nullable,
+        dimension,
+      );
     } finally {
       calloc.free(namePtr);
     }
@@ -62,7 +67,8 @@ class FieldSchema {
   }
 
   /// Get the data type.
-  DataType get dataType => DataType.fromValue(_b.zvec_field_schema_get_data_type(_ptr));
+  DataType get dataType =>
+      DataType.fromValue(_b.zvec_field_schema_get_data_type(_ptr));
 
   /// Whether the field is nullable.
   bool get isNullable => _b.zvec_field_schema_is_nullable(_ptr);
@@ -115,11 +121,11 @@ class VectorSchema extends FieldSchema {
     DataType dataType = DataType.vectorFp32,
     IndexParams? indexParams,
   }) : super(
-          name: name,
-          dataType: dataType,
-          nullable: false,
-          dimension: dimension,
-        ) {
+         name: name,
+         dataType: dataType,
+         nullable: false,
+         dimension: dimension,
+       ) {
     if (indexParams != null) {
       setIndexParams(indexParams);
     }
@@ -132,10 +138,8 @@ class CollectionSchema {
   ///
   /// - [name]: Collection name.
   /// - [fields]: List of field schemas to add.
-  CollectionSchema({
-    required String name,
-    List<FieldSchema>? fields,
-  }) : _ownsPtr = true {
+  CollectionSchema({required String name, List<FieldSchema>? fields})
+    : _ownsPtr = true {
     final namePtr = name.toNativeUtf8().cast<Char>();
     try {
       _ptr = _b.zvec_collection_schema_create(namePtr);
@@ -151,11 +155,12 @@ class CollectionSchema {
 
   /// Wrap an existing native pointer.
   CollectionSchema._fromPtr(this._ptr, {bool ownsPtr = true})
-      : _ownsPtr = ownsPtr;
+    : _ownsPtr = ownsPtr;
 
   /// Create from a native pointer (owning). Used internally by Collection.
-  factory CollectionSchema.fromNativePtr(Pointer<zvec_collection_schema_t> ptr) =>
-      CollectionSchema._fromPtr(ptr, ownsPtr: true);
+  factory CollectionSchema.fromNativePtr(
+    Pointer<zvec_collection_schema_t> ptr,
+  ) => CollectionSchema._fromPtr(ptr, ownsPtr: true);
 
   late final Pointer<zvec_collection_schema_t> _ptr;
   final bool _ownsPtr;
@@ -223,8 +228,9 @@ class CollectionSchema {
   void addIndex(String fieldName, IndexParams params) {
     final namePtr = fieldName.toNativeUtf8().cast<Char>();
     try {
-      checkError(_b.zvec_collection_schema_add_index(
-          _ptr, namePtr, params.nativePtr));
+      checkError(
+        _b.zvec_collection_schema_add_index(_ptr, namePtr, params.nativePtr),
+      );
     } finally {
       calloc.free(namePtr);
     }

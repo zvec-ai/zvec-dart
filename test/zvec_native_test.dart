@@ -42,13 +42,16 @@ void _cleanupDir(Directory dir) {
 
 /// Helper: create a minimal schema with a 4-dim FP32 vector and a string field.
 CollectionSchema _createTestSchema() {
-  return CollectionSchema(name: 'test_collection', fields: [
-    VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
-    FieldSchema(name: 'title', dataType: DataType.string),
-    FieldSchema(name: 'count', dataType: DataType.int64),
-    FieldSchema(name: 'score_val', dataType: DataType.float64),
-    FieldSchema(name: 'active', dataType: DataType.bool_),
-  ]);
+  return CollectionSchema(
+    name: 'test_collection',
+    fields: [
+      VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
+      FieldSchema(name: 'title', dataType: DataType.string),
+      FieldSchema(name: 'count', dataType: DataType.int64),
+      FieldSchema(name: 'score_val', dataType: DataType.float64),
+      FieldSchema(name: 'active', dataType: DataType.bool_),
+    ],
+  );
 }
 
 /// Helper: create a populated collection with test data and return it.
@@ -63,9 +66,7 @@ CollectionSchema _createTestSchema() {
   final rng = Random(42);
   final docs = <Doc>[];
   for (var i = 0; i < 10; i++) {
-    final vec = Float32List.fromList(
-      List.generate(4, (_) => rng.nextDouble()),
-    );
+    final vec = Float32List.fromList(List.generate(4, (_) => rng.nextDouble()));
     final doc = Doc(id: 'pk_$i')
       ..setField('title', 'Document #$i')
       ..setField('count', i * 10)
@@ -74,9 +75,161 @@ CollectionSchema _createTestSchema() {
       ..setVector('embedding', vec);
     docs.add(doc);
   }
-  collection.insert(docs);
+  final insertResult = collection.insert(docs);
   for (final doc in docs) {
     doc.destroy();
+  }
+
+  if (insertResult.successCount != docs.length ||
+      insertResult.errorCount != 0) {
+    final details = insertResult.errors.join('; ');
+    try {
+      collection.close();
+    } catch (_) {}
+    _cleanupDir(dir);
+    fail(
+      '_createPopulatedCollection failed to insert seed docs: '
+      '$insertResult, expected success=${docs.length}, error=0, '
+      'details=[$details]',
+    );
+  }
+
+  collection.optimize();
+  return (collection, dir);
+}
+
+/// Helper: create a collection with two searchable vector fields.
+(Collection, Directory) _createMultiVectorCollection() {
+  final dir = _createTempDir('multi_vector');
+  final schema = CollectionSchema(
+    name: 'multi_vector_collection',
+    fields: [
+      VectorSchema('title_embedding', 4, indexParams: FlatIndexParams()),
+      VectorSchema('body_embedding', 4, indexParams: FlatIndexParams()),
+      FieldSchema(name: 'title', dataType: DataType.string),
+      FieldSchema(name: 'rank', dataType: DataType.int64),
+    ],
+  );
+  final collection = Collection.createAndOpen(_dbPath(dir), schema);
+  schema.destroy();
+
+  final titleNeedle = Float32List.fromList([1.0, 0.0, 0.0, 0.0]);
+  final bodyNeedle = Float32List.fromList([0.0, 1.0, 0.0, 0.0]);
+  final other = Float32List.fromList([0.0, 0.0, 1.0, 0.0]);
+  final far = Float32List.fromList([0.0, 0.0, 0.0, 1.0]);
+
+  final docs = [
+    Doc(id: 'pk_both')
+      ..setField('title', 'Both fields')
+      ..setField('rank', 10)
+      ..setVector('title_embedding', titleNeedle)
+      ..setVector('body_embedding', bodyNeedle),
+    Doc(id: 'pk_title')
+      ..setField('title', 'Title field')
+      ..setField('rank', 20)
+      ..setVector('title_embedding', titleNeedle)
+      ..setVector('body_embedding', other),
+    Doc(id: 'pk_body')
+      ..setField('title', 'Body field')
+      ..setField('rank', 30)
+      ..setVector('title_embedding', other)
+      ..setVector('body_embedding', bodyNeedle),
+    Doc(id: 'pk_far')
+      ..setField('title', 'Far field')
+      ..setField('rank', 40)
+      ..setVector('title_embedding', far)
+      ..setVector('body_embedding', far),
+  ];
+
+  final insertResult = collection.insert(docs);
+  for (final doc in docs) {
+    doc.destroy();
+  }
+
+  if (insertResult.successCount != docs.length ||
+      insertResult.errorCount != 0) {
+    final details = insertResult.errors.join('; ');
+    try {
+      collection.close();
+    } catch (_) {}
+    _cleanupDir(dir);
+    fail(
+      '_createMultiVectorCollection failed to insert seed docs: '
+      '$insertResult, expected success=${docs.length}, error=0, '
+      'details=[$details]',
+    );
+  }
+
+  collection.optimize();
+  return (collection, dir);
+}
+
+/// Helper: create a collection with one vector field and one FTS field.
+(Collection, Directory) _createVectorFtsCollection() {
+  final dir = _createTempDir('vector_fts');
+  final content = FieldSchema(
+    name: 'content',
+    dataType: DataType.string,
+    nullable: false,
+  );
+  final ftsIndexParams = FtsIndexParams(
+    tokenizerName: 'jieba',
+    filters: ['lowercase'],
+  );
+  content.setIndexParams(ftsIndexParams);
+
+  final schema = CollectionSchema(
+    name: 'vector_fts_collection',
+    fields: [
+      VectorSchema('embedding', 4, indexParams: FlatIndexParams()),
+      FieldSchema(name: 'title', dataType: DataType.string),
+      content,
+    ],
+  );
+  final collection = Collection.createAndOpen(_dbPath(dir), schema);
+  schema.destroy();
+  content.destroy();
+  ftsIndexParams.destroy();
+
+  final vectorNeedle = Float32List.fromList([1.0, 0.0, 0.0, 0.0]);
+  final far = Float32List.fromList([0.0, 0.0, 0.0, 1.0]);
+
+  final docs = [
+    Doc(id: 'pk_both')
+      ..setField('title', 'Vector and FTS')
+      ..setField('content', '中华人民共和国成立')
+      ..setVector('embedding', vectorNeedle),
+    Doc(id: 'pk_vector')
+      ..setField('title', 'Vector only')
+      ..setField('content', '无关文档')
+      ..setVector('embedding', vectorNeedle),
+    Doc(id: 'pk_fts')
+      ..setField('title', 'FTS only')
+      ..setField('content', '中华文化源远流长')
+      ..setVector('embedding', far),
+    Doc(id: 'pk_far')
+      ..setField('title', 'Far')
+      ..setField('content', '完全不同')
+      ..setVector('embedding', far),
+  ];
+
+  final insertResult = collection.insert(docs);
+  for (final doc in docs) {
+    doc.destroy();
+  }
+
+  if (insertResult.successCount != docs.length ||
+      insertResult.errorCount != 0) {
+    final details = insertResult.errors.join('; ');
+    try {
+      collection.close();
+    } catch (_) {}
+    _cleanupDir(dir);
+    fail(
+      '_createVectorFtsCollection failed to insert seed docs: '
+      '$insertResult, expected success=${docs.length}, error=0, '
+      'details=[$details]',
+    );
   }
 
   collection.optimize();
@@ -134,6 +287,37 @@ void main() {
       // Accessing after destroy should throw StateError
       expect(() => config.memoryLimit, throwsStateError);
     });
+
+    test('setJiebaDictDir round-trips value', () {
+      final config = ConfigData();
+      config.setJiebaDictDir('/tmp/jieba_dict');
+      expect(config.jiebaDictDir, '/tmp/jieba_dict');
+      config.destroy();
+    });
+
+    test('bundled Jieba dict dir is registered by default', () {
+      final dir = Zvec.defaultJiebaDictDir;
+      expect(dir, isNotNull);
+      expect(File('$dir/jieba.dict.utf8').existsSync(), isTrue);
+      expect(File('$dir/hmm_model.utf8').existsSync(), isTrue);
+    });
+
+    test('setDefaultJiebaDictDir round-trips global value', () {
+      final previous = Zvec.defaultJiebaDictDir;
+      try {
+        Zvec.setDefaultJiebaDictDir('/tmp/zvec_jieba_default');
+        expect(Zvec.defaultJiebaDictDir, '/tmp/zvec_jieba_default');
+      } finally {
+        Zvec.setDefaultJiebaDictDir(previous ?? '');
+      }
+    });
+
+    test('setFtsBruteForceByKeysRatio round-trips value', () {
+      final config = ConfigData();
+      config.setFtsBruteForceByKeysRatio(0.25);
+      expect(config.ftsBruteForceByKeysRatio, closeTo(0.25, 1e-6));
+      config.destroy();
+    });
   });
 
   group('LogConfig', () {
@@ -179,7 +363,6 @@ void main() {
   // Task 5: Schema and field tests
   // =========================================================================
   group('FieldSchema', () {
-
     test('scalar field properties', () {
       final field = FieldSchema(
         name: 'title',
@@ -233,7 +416,6 @@ void main() {
   });
 
   group('VectorSchema', () {
-
     test('creates vector field with correct defaults', () {
       final vs = VectorSchema('embed', 256);
       expect(vs.name, 'embed');
@@ -253,11 +435,11 @@ void main() {
   });
 
   group('CollectionSchema', () {
-
     test('create with name and fields', () {
-      final schema = CollectionSchema(name: 'my_coll', fields: [
-        FieldSchema(name: 'f1', dataType: DataType.string),
-      ]);
+      final schema = CollectionSchema(
+        name: 'my_coll',
+        fields: [FieldSchema(name: 'f1', dataType: DataType.string)],
+      );
       expect(schema.name, 'my_coll');
       expect(schema.hasField('f1'), isTrue);
       expect(schema.hasField('nonexistent'), isFalse);
@@ -294,10 +476,13 @@ void main() {
     });
 
     test('dropField removes field', () {
-      final schema = CollectionSchema(name: 'test', fields: [
-        FieldSchema(name: 'f1', dataType: DataType.string),
-        FieldSchema(name: 'f2', dataType: DataType.int64),
-      ]);
+      final schema = CollectionSchema(
+        name: 'test',
+        fields: [
+          FieldSchema(name: 'f1', dataType: DataType.string),
+          FieldSchema(name: 'f2', dataType: DataType.int64),
+        ],
+      );
       expect(schema.hasField('f1'), isTrue);
       schema.dropField('f1');
       expect(schema.hasField('f1'), isFalse);
@@ -307,9 +492,10 @@ void main() {
 
     test('addIndex and dropIndex on field', () {
       // Use a scalar field to test addIndex / dropIndex clearly
-      final schema = CollectionSchema(name: 'test', fields: [
-        FieldSchema(name: 'title', dataType: DataType.string),
-      ]);
+      final schema = CollectionSchema(
+        name: 'test',
+        fields: [FieldSchema(name: 'title', dataType: DataType.string)],
+      );
       final field = schema.getField('title');
       expect(field, isNotNull);
       expect(field!.hasIndex, isFalse);
@@ -338,7 +524,6 @@ void main() {
   // Task 6: Collection lifecycle and options
   // =========================================================================
   group('CollectionOptions', () {
-
     test('default options', () {
       final opts = CollectionOptions();
       // Just verify getters don't throw
@@ -368,7 +553,6 @@ void main() {
   });
 
   group('Collection lifecycle', () {
-
     test('createAndOpen then close', () {
       final dir = _createTempDir('lifecycle');
       try {
@@ -453,7 +637,6 @@ void main() {
   // Task 7: Doc operations
   // =========================================================================
   group('Doc', () {
-
     test('default constructor creates empty doc', () {
       final doc = Doc();
       expect(doc.isEmpty, isTrue);
@@ -477,13 +660,16 @@ void main() {
     });
 
     test('constructor with fields map', () {
-      final doc = Doc(id: 'pk1', fields: {
-        'name': 'Alice',
-        'age': 30,
-        'height': 1.65,
-        'active': true,
-        'vec': Float32List.fromList([1.0, 2.0, 3.0]),
-      });
+      final doc = Doc(
+        id: 'pk1',
+        fields: {
+          'name': 'Alice',
+          'age': 30,
+          'height': 1.65,
+          'active': true,
+          'vec': Float32List.fromList([1.0, 2.0, 3.0]),
+        },
+      );
       expect(doc.pk, 'pk1');
       expect(doc.getString('name'), 'Alice');
       expect(doc.getInt64('age'), 30);
@@ -588,7 +774,6 @@ void main() {
   // Task 8: DML operations (insert/update/upsert/delete)
   // =========================================================================
   group('Collection DML', () {
-
     test('insert returns correct WriteResult', () {
       final (collection, dir) = _createPopulatedCollection();
       try {
@@ -604,8 +789,7 @@ void main() {
     test('update modifies existing documents', () {
       final (collection, dir) = _createPopulatedCollection();
       try {
-        final doc = Doc(id: 'pk_0')
-          ..setField('title', 'Updated Title');
+        final doc = Doc(id: 'pk_0')..setField('title', 'Updated Title');
         final result = collection.update([doc]);
         doc.destroy();
         expect(result.successCount, 1);
@@ -724,7 +908,9 @@ void main() {
     });
 
     tearDownAll(() {
-      try { collection.close(); } catch (_) {}
+      try {
+        collection.close();
+      } catch (_) {}
       _cleanupDir(tmpDir);
     });
 
@@ -822,7 +1008,9 @@ void main() {
     });
 
     tearDownAll(() {
-      try { collection.close(); } catch (_) {}
+      try {
+        collection.close();
+      } catch (_) {}
       _cleanupDir(tmpDir);
     });
 
@@ -846,7 +1034,6 @@ void main() {
   // Task 10: Index params, query params, column management
   // =========================================================================
   group('IndexParams', () {
-
     test('HnswIndexParams defaults', () {
       final p = HnswIndexParams();
       expect(p.indexType, IndexType.hnsw);
@@ -871,10 +1058,7 @@ void main() {
     });
 
     test('IVFIndexParams', () {
-      final p = IVFIndexParams(
-        nList: 50,
-        metricType: MetricType.ip,
-      );
+      final p = IVFIndexParams(nList: 50, metricType: MetricType.ip);
       expect(p.indexType, IndexType.ivf);
       expect(p.metricType, MetricType.ip);
       p.destroy();
@@ -895,7 +1079,6 @@ void main() {
   });
 
   group('QueryParams', () {
-
     test('HnswQueryParams default and custom ef', () {
       final p = HnswQueryParams();
       expect(p.ef, 40);
@@ -922,10 +1105,29 @@ void main() {
       expect(p.nativePtr, isNotNull);
       p.destroy();
     });
+
+    test('FtsQueryParams default operator is OR', () {
+      final p = FtsQueryParams();
+      expect(p.defaultOperator, 'OR');
+      p.destroy();
+    });
+
+    test('FtsQueryParams custom operator AND', () {
+      final p = FtsQueryParams(defaultOperator: 'AND');
+      expect(p.defaultOperator, 'AND');
+      p.destroy();
+    });
+
+    test('FtsQueryParams setter changes operator', () {
+      final p = FtsQueryParams();
+      expect(p.defaultOperator, 'OR');
+      p.defaultOperator = 'AND';
+      expect(p.defaultOperator, 'AND');
+      p.destroy();
+    });
   });
 
   group('Collection DDL (column management)', () {
-
     test('addColumn adds a new field', () {
       final dir = _createTempDir('ddl_add');
       try {
@@ -972,10 +1174,13 @@ void main() {
       final dir = _createTempDir('ddl_index');
       try {
         // Create collection with a string field that has no index
-        final schema = CollectionSchema(name: 'idx_test', fields: [
-          VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
-          FieldSchema(name: 'title', dataType: DataType.string),
-        ]);
+        final schema = CollectionSchema(
+          name: 'idx_test',
+          fields: [
+            VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
+            FieldSchema(name: 'title', dataType: DataType.string),
+          ],
+        );
         final collection = Collection.createAndOpen(_dbPath(dir), schema);
         schema.destroy();
 
@@ -1008,7 +1213,6 @@ void main() {
   // Task 11: CollectionStats and error handling
   // =========================================================================
   group('CollectionStats', () {
-
     test('docCount reflects inserted documents', () {
       final (collection, dir) = _createPopulatedCollection();
       try {
@@ -1030,10 +1234,7 @@ void main() {
         // Verify getIndexName and getIndexCompleteness
         for (var i = 0; i < stats.indexCount; i++) {
           expect(stats.getIndexName(i), isNotEmpty);
-          expect(
-            stats.getIndexCompleteness(i),
-            greaterThanOrEqualTo(0.0),
-          );
+          expect(stats.getIndexCompleteness(i), greaterThanOrEqualTo(0.0));
         }
         stats.destroy();
         collection.close();
@@ -1061,7 +1262,6 @@ void main() {
   });
 
   group('Error handling', () {
-
     test('open non-existent collection throws ZvecException', () {
       expect(
         () => Collection.open('/tmp/zvec_test_does_not_exist_12345'),
@@ -1078,6 +1278,559 @@ void main() {
         expect(e.code, isNot(ZvecErrorCode.ok));
         expect(e.toString(), contains('ZvecException'));
       }
+    });
+  });
+
+  // =========================================================================
+  // Task 12: FTS and MultiQuery — new in 0.5.0
+  // =========================================================================
+  group('FtsQuery', () {
+    test('create with queryString', () {
+      final fts = FtsQuery(queryString: 'title:flutter AND body:dart');
+      expect(fts.queryString, 'title:flutter AND body:dart');
+      expect(fts.matchString, isNull);
+      fts.destroy();
+    });
+
+    test('create with matchString', () {
+      final fts = FtsQuery(matchString: '如何使用向量数据库');
+      expect(fts.matchString, '如何使用向量数据库');
+      expect(fts.queryString, isNull);
+      fts.destroy();
+    });
+
+    test('create with both queryString and matchString', () {
+      final fts = FtsQuery(
+        queryString: 'title:flutter',
+        matchString: 'vector database',
+      );
+      expect(fts.queryString, 'title:flutter');
+      expect(fts.matchString, 'vector database');
+      fts.destroy();
+    });
+
+    test('create empty FtsQuery', () {
+      final fts = FtsQuery();
+      expect(fts.queryString, isNull);
+      expect(fts.matchString, isNull);
+      fts.destroy();
+    });
+
+    test('nativePtr is not null', () {
+      final fts = FtsQuery(queryString: 'test');
+      expect(fts.nativePtr, isNotNull);
+      fts.destroy();
+    });
+  });
+
+  group('FtsIndexParams', () {
+    test('create with tokenizerName only', () {
+      final p = FtsIndexParams(tokenizerName: 'standard');
+      expect(p.indexType, IndexType.fts);
+      p.destroy();
+    });
+
+    test('create with tokenizerName and filters', () {
+      final p = FtsIndexParams(
+        tokenizerName: 'jieba',
+        filters: ['lowercase', 'stopwords'],
+      );
+      expect(p.indexType, IndexType.fts);
+      p.destroy();
+    });
+
+    test('create with tokenizerName and extraParams', () {
+      final p = FtsIndexParams(
+        tokenizerName: 'jieba',
+        extraParams: '{"mode": "search"}',
+      );
+      expect(p.indexType, IndexType.fts);
+      p.destroy();
+    });
+
+    test('create with all parameters', () {
+      final p = FtsIndexParams(
+        tokenizerName: 'jieba',
+        filters: ['lowercase'],
+        extraParams: '{"mode": "search"}',
+      );
+      expect(p.indexType, IndexType.fts);
+      expect(p.nativePtr, isNotNull);
+      p.destroy();
+    });
+  });
+
+  group('Jieba FTS end-to-end', () {
+    test('queries Chinese text using bundled default dict', () {
+      final dir = _createTempDir('jieba_fts');
+      Collection? collection;
+      try {
+        final title = FieldSchema(
+          name: 'title',
+          dataType: DataType.string,
+          nullable: false,
+        );
+        final content = FieldSchema(
+          name: 'content',
+          dataType: DataType.string,
+          nullable: false,
+        );
+        final ftsParams = FtsIndexParams(
+          tokenizerName: 'jieba',
+          filters: ['lowercase'],
+        );
+        content.setIndexParams(ftsParams);
+
+        final schema = CollectionSchema(name: 'jieba_fts_default');
+        schema.addField(title);
+        schema.addField(content);
+        title.destroy();
+        content.destroy();
+        ftsParams.destroy();
+
+        collection = Collection.createAndOpen(_dbPath(dir), schema);
+        schema.destroy();
+
+        final docs = [
+          Doc(id: 'pk_1')
+            ..setField('title', 'match')
+            ..setField('content', '中华人民共和国成立'),
+          Doc(id: 'pk_2')
+            ..setField('title', 'miss')
+            ..setField('content', '无关文档'),
+        ];
+        final insertResult = collection.insert(docs);
+        for (final doc in docs) {
+          doc.destroy();
+        }
+
+        if (!insertResult.isAllSuccess) {
+          fail('Jieba FTS insert failed: $insertResult');
+        }
+
+        final fts = FtsQuery(matchString: '中华');
+        final query = VectorQuery.fts(
+          fieldName: 'content',
+          fts: fts,
+          topk: 10,
+          outputFields: ['title', 'content'],
+        );
+        final results = collection.query(query);
+        query.destroy();
+        fts.destroy();
+
+        final ids = results.map((doc) => doc.pk).toSet();
+        expect(ids, contains('pk_1'));
+        expect(ids, isNot(contains('pk_2')));
+      } finally {
+        try {
+          collection?.close();
+        } catch (_) {}
+        _cleanupDir(dir);
+      }
+    });
+  });
+
+  group('SubQuery', () {
+    test('create with dense vector', () {
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+    });
+
+    test('create with sparse vector', () {
+      final sq = SubQuery(
+        fieldName: 'sparse_embedding',
+        sparseIndices: Uint32List.fromList([0, 5, 10]),
+        sparseValues: Float32List.fromList([0.1, 0.5, 0.9]),
+      );
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+    });
+
+    test('create with custom numCandidates', () {
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([1.0, 2.0]),
+        numCandidates: 200,
+      );
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+    });
+
+    test('create with queryParams (HNSW)', () {
+      final qp = HnswQueryParams(ef: 150);
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([1.0, 2.0, 3.0]),
+        queryParams: qp,
+      );
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+      qp.destroy();
+    });
+
+    test('create with FTS payload and params', () {
+      final fts = FtsQuery(matchString: '中华');
+      final qp = FtsQueryParams(defaultOperator: 'AND');
+      final sq = SubQuery(fieldName: 'content', fts: fts, ftsParams: qp);
+      expect(sq.nativePtr, isNotNull);
+      sq.destroy();
+      qp.destroy();
+      fts.destroy();
+    });
+
+    test('rejects vector and FTS payload in one sub-query', () {
+      final fts = FtsQuery(matchString: '中华');
+      try {
+        expect(
+          () => SubQuery(
+            fieldName: 'content',
+            vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+            fts: fts,
+          ),
+          throwsArgumentError,
+        );
+      } finally {
+        fts.destroy();
+      }
+    });
+  });
+
+  group('MultiQuery', () {
+    test('create with single dense sub-query', () {
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      final mq = MultiQuery(subQueries: [sq], topk: 5);
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sq.destroy();
+    });
+
+    test('create with filter and outputFields', () {
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.5, 0.5, 0.5, 0.5]),
+      );
+      final mq = MultiQuery(
+        subQueries: [sq],
+        topk: 10,
+        filter: 'count >= 50',
+        outputFields: ['title', 'count'],
+      );
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sq.destroy();
+    });
+
+    test('create with includeVector', () {
+      final sq = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      final mq = MultiQuery(subQueries: [sq], topk: 5, includeVector: true);
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sq.destroy();
+    });
+
+    test('create with RrfRerank strategy', () {
+      final sq1 = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      final sq2 = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.5, 0.6, 0.7, 0.8]),
+      );
+      final mq = MultiQuery(
+        subQueries: [sq1, sq2],
+        topk: 10,
+        rerank: const RrfRerank(rankConstant: 60),
+      );
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sq1.destroy();
+      sq2.destroy();
+    });
+
+    test('create with WeightedRerank strategy', () {
+      final sq1 = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      final sq2 = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.5, 0.6, 0.7, 0.8]),
+      );
+      final mq = MultiQuery(
+        subQueries: [sq1, sq2],
+        topk: 10,
+        rerank: const WeightedRerank(weights: [0.7, 0.3]),
+      );
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sq1.destroy();
+      sq2.destroy();
+    });
+
+    test('create with multiple sub-queries (dense + sparse)', () {
+      final sqDense = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([0.1, 0.2, 0.3, 0.4]),
+      );
+      final sqSparse = SubQuery(
+        fieldName: 'sparse_embedding',
+        sparseIndices: Uint32List.fromList([0, 3, 7]),
+        sparseValues: Float32List.fromList([0.5, 0.8, 0.2]),
+      );
+      final mq = MultiQuery(
+        subQueries: [sqDense, sqSparse],
+        topk: 10,
+        rerank: const RrfRerank(),
+      );
+      expect(mq.nativePtr, isNotNull);
+      mq.destroy();
+      sqDense.destroy();
+      sqSparse.destroy();
+    });
+
+    test('executes vector + vector RRF fusion', () {
+      final result = _createMultiVectorCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final titleSubQuery = SubQuery(
+        fieldName: 'title_embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final bodySubQuery = SubQuery(
+        fieldName: 'body_embedding',
+        vector: Float32List.fromList([0.0, 1.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [titleSubQuery, bodySubQuery],
+        topk: 3,
+        outputFields: ['title', 'rank'],
+        rerank: const RrfRerank(rankConstant: 60),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toList();
+
+        expect(ids, isNotEmpty);
+        expect(ids.first, 'pk_both');
+        expect(ids, containsAll(['pk_title', 'pk_body']));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getInt64('rank'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        titleSubQuery.destroy();
+        bodySubQuery.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
+    });
+
+    test('executes vector + vector weighted fusion with filter', () {
+      final result = _createMultiVectorCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final titleSubQuery = SubQuery(
+        fieldName: 'title_embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final bodySubQuery = SubQuery(
+        fieldName: 'body_embedding',
+        vector: Float32List.fromList([0.0, 1.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [titleSubQuery, bodySubQuery],
+        topk: 4,
+        filter: 'rank < 40',
+        includeVector: true,
+        outputFields: ['title', 'rank'],
+        rerank: const WeightedRerank(weights: [0.8, 0.2]),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toSet();
+
+        expect(ids, isNot(contains('pk_far')));
+        expect(ids, containsAll(['pk_both', 'pk_title', 'pk_body']));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getInt64('rank'), lessThan(40));
+          expect(doc.getVector('title_embedding'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        titleSubQuery.destroy();
+        bodySubQuery.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
+    });
+
+    test('executes vector + FTS RRF fusion', () {
+      final result = _createVectorFtsCollection();
+      final collection = result.$1;
+      final tmpDir = result.$2;
+      final fts = FtsQuery(matchString: '中华');
+      final ftsParams = FtsQueryParams(defaultOperator: 'OR');
+      final vectorSubQuery = SubQuery(
+        fieldName: 'embedding',
+        vector: Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+        numCandidates: 4,
+      );
+      final ftsSubQuery = SubQuery(
+        fieldName: 'content',
+        fts: fts,
+        ftsParams: ftsParams,
+        numCandidates: 4,
+      );
+      final query = MultiQuery(
+        subQueries: [vectorSubQuery, ftsSubQuery],
+        topk: 3,
+        outputFields: ['title', 'content'],
+        rerank: const RrfRerank(rankConstant: 60),
+      );
+
+      try {
+        final results = collection.multiQuery(query);
+        final ids = results.map((doc) => doc.pk).toList();
+
+        expect(ids, isNotEmpty);
+        expect(ids.first, 'pk_both');
+        expect(ids, containsAll(['pk_vector', 'pk_fts']));
+        expect(ids, isNot(contains('pk_far')));
+        for (final doc in results) {
+          expect(doc.getString('title'), isNotNull);
+          expect(doc.getString('content'), isNotNull);
+        }
+      } finally {
+        query.destroy();
+        vectorSubQuery.destroy();
+        ftsSubQuery.destroy();
+        ftsParams.destroy();
+        fts.destroy();
+        try {
+          collection.close();
+        } catch (_) {}
+        _cleanupDir(tmpDir);
+      }
+    });
+  });
+
+  group('VectorQuery FTS-only', () {
+    test('create FTS VectorQuery with fts parameter', () {
+      final fts = FtsQuery(queryString: 'flutter dart');
+      final query = VectorQuery.fts(fieldName: 'content', topk: 10, fts: fts);
+      expect(query.nativePtr, isNotNull);
+      query.destroy();
+      fts.destroy();
+    });
+
+    test('create FTS VectorQuery with fts and ftsParams', () {
+      final fts = FtsQuery(matchString: '向量搜索');
+      final ftsParams = FtsQueryParams(defaultOperator: 'AND');
+      final query = VectorQuery.fts(
+        fieldName: 'content',
+        topk: 5,
+        fts: fts,
+        ftsParams: ftsParams,
+      );
+      expect(query.nativePtr, isNotNull);
+      query.destroy();
+      fts.destroy();
+      ftsParams.destroy();
+    });
+
+    test('create FTS VectorQuery with fts, ftsParams, and filter', () {
+      final fts = FtsQuery(queryString: 'title:hello');
+      final ftsParams = FtsQueryParams();
+      final query = VectorQuery.fts(
+        fieldName: 'content',
+        topk: 3,
+        filter: 'count >= 10',
+        outputFields: ['title'],
+        fts: fts,
+        ftsParams: ftsParams,
+      );
+      expect(query.nativePtr, isNotNull);
+      query.destroy();
+      fts.destroy();
+      ftsParams.destroy();
+    });
+  });
+
+  group('Collection.fetch new signature', () {
+    late Collection collection;
+    late Directory tmpDir;
+
+    setUpAll(() {
+      final result = _createPopulatedCollection();
+      collection = result.$1;
+      tmpDir = result.$2;
+    });
+
+    tearDownAll(() {
+      try {
+        collection.close();
+      } catch (_) {}
+      _cleanupDir(tmpDir);
+    });
+
+    test('fetch with outputFields returns specified fields', () {
+      final docs = collection.fetch(['pk_0', 'pk_1'], outputFields: ['title']);
+      expect(docs.length, 2);
+      for (final doc in docs) {
+        expect(doc.getString('title'), isNotNull);
+      }
+    });
+
+    test('fetch with includeVector returns vector data', () {
+      final docs = collection.fetch(['pk_0'], includeVector: true);
+      expect(docs.length, 1);
+      final vec = docs[0].getVector('embedding');
+      expect(vec, isNotNull);
+      expect(vec!.length, 4);
+    });
+
+    test('fetch with outputFields and includeVector', () {
+      final docs = collection.fetch(
+        ['pk_0', 'pk_5'],
+        outputFields: ['title', 'count'],
+        includeVector: true,
+      );
+      expect(docs.length, 2);
+      for (final doc in docs) {
+        expect(doc.getString('title'), isNotNull);
+        final vec = doc.getVector('embedding');
+        expect(vec, isNotNull);
+        expect(vec!.length, 4);
+      }
+    });
+
+    test('fetch without optional params still works', () {
+      final docs = collection.fetch(['pk_0']);
+      expect(docs.length, 1);
     });
   });
 }

@@ -14,6 +14,8 @@
 
 import 'dart:ffi';
 
+import 'package:ffi/ffi.dart';
+
 import 'errors.dart';
 import 'types.dart';
 import 'zvec_bindings.dart';
@@ -34,7 +36,8 @@ abstract class IndexParams {
   Pointer<zvec_index_params_t> get nativePtr => _ptr;
 
   /// The index type.
-  IndexType get indexType => IndexType.fromValue(_b.zvec_index_params_get_type(_ptr));
+  IndexType get indexType =>
+      IndexType.fromValue(_b.zvec_index_params_get_type(_ptr));
 
   /// The distance metric type (for vector indexes).
   MetricType get metricType =>
@@ -67,7 +70,11 @@ class HnswIndexParams extends IndexParams {
   }) : super._(_createHnsw(m, efConstruction, metricType, quantizeType));
 
   static Pointer<zvec_index_params_t> _createHnsw(
-      int m, int efConstruction, MetricType metric, QuantizeType quant) {
+    int m,
+    int efConstruction,
+    MetricType metric,
+    QuantizeType quant,
+  ) {
     final ptr = _b.zvec_index_params_create(IndexType.hnsw.value);
     checkError(_b.zvec_index_params_set_metric_type(ptr, metric.value));
     checkError(_b.zvec_index_params_set_quantize_type(ptr, quant.value));
@@ -100,11 +107,18 @@ class IVFIndexParams extends IndexParams {
   }) : super._(_createIVF(nList, nIters, useSoar, metricType, quantizeType));
 
   static Pointer<zvec_index_params_t> _createIVF(
-      int nList, int nIters, bool useSoar, MetricType metric, QuantizeType quant) {
+    int nList,
+    int nIters,
+    bool useSoar,
+    MetricType metric,
+    QuantizeType quant,
+  ) {
     final ptr = _b.zvec_index_params_create(IndexType.ivf.value);
     checkError(_b.zvec_index_params_set_metric_type(ptr, metric.value));
     checkError(_b.zvec_index_params_set_quantize_type(ptr, quant.value));
-    checkError(_b.zvec_index_params_set_ivf_params(ptr, nList, nIters, useSoar));
+    checkError(
+      _b.zvec_index_params_set_ivf_params(ptr, nList, nIters, useSoar),
+    );
     return ptr;
   }
 }
@@ -121,7 +135,9 @@ class FlatIndexParams extends IndexParams {
   }) : super._(_createFlat(metricType, quantizeType));
 
   static Pointer<zvec_index_params_t> _createFlat(
-      MetricType metric, QuantizeType quant) {
+    MetricType metric,
+    QuantizeType quant,
+  ) {
     final ptr = _b.zvec_index_params_create(IndexType.flat.value);
     checkError(_b.zvec_index_params_set_metric_type(ptr, metric.value));
     checkError(_b.zvec_index_params_set_quantize_type(ptr, quant.value));
@@ -135,16 +151,68 @@ class InvertIndexParams extends IndexParams {
   ///
   /// - [enableRangeOpt]: Whether to enable range optimization (default: false)
   /// - [enableWildcard]: Whether to enable extended wildcard (default: false)
-  InvertIndexParams({
-    bool enableRangeOpt = false,
-    bool enableWildcard = false,
-  }) : super._(_createInvert(enableRangeOpt, enableWildcard));
+  InvertIndexParams({bool enableRangeOpt = false, bool enableWildcard = false})
+    : super._(_createInvert(enableRangeOpt, enableWildcard));
 
   static Pointer<zvec_index_params_t> _createInvert(
-      bool enableRangeOpt, bool enableWildcard) {
+    bool enableRangeOpt,
+    bool enableWildcard,
+  ) {
     final ptr = _b.zvec_index_params_create(IndexType.invert.value);
     checkError(
-        _b.zvec_index_params_set_invert_params(ptr, enableRangeOpt, enableWildcard));
+      _b.zvec_index_params_set_invert_params(
+        ptr,
+        enableRangeOpt,
+        enableWildcard,
+      ),
+    );
     return ptr;
+  }
+}
+
+/// FTS (Full-Text Search) index parameters.
+class FtsIndexParams extends IndexParams {
+  /// Create FTS index parameters.
+  ///
+  /// - [tokenizerName]: Name of the tokenizer (e.g. 'jieba', 'standard').
+  /// - [filters]: Optional list of text filters to apply.
+  /// - [extraParams]: Optional extra parameters as JSON string.
+  FtsIndexParams({
+    required String tokenizerName,
+    List<String>? filters,
+    String? extraParams,
+  }) : super._(_createFts(tokenizerName, filters, extraParams));
+
+  static Pointer<zvec_index_params_t> _createFts(
+    String tokenizerName,
+    List<String>? filters,
+    String? extraParams,
+  ) {
+    final ptr = _b.zvec_index_params_create(IndexType.fts.value);
+    final tokPtr = tokenizerName.toNativeUtf8().cast<Char>();
+    Pointer<zvec_string_array_t> filtersPtr = nullptr.cast();
+    final extraPtr =
+        extraParams?.toNativeUtf8().cast<Char>() ?? nullptr.cast<Char>();
+    try {
+      // Create string array for filters if provided
+      if (filters != null && filters.isNotEmpty) {
+        filtersPtr = _b.zvec_string_array_create(filters.length);
+        for (var i = 0; i < filters.length; i++) {
+          final fPtr = filters[i].toNativeUtf8().cast<Char>();
+          _b.zvec_string_array_add(filtersPtr, i, fPtr);
+          calloc.free(fPtr);
+        }
+      }
+      checkError(
+        _b.zvec_index_params_set_fts_params(ptr, tokPtr, filtersPtr, extraPtr),
+      );
+      return ptr;
+    } finally {
+      calloc.free(tokPtr);
+      if (extraParams != null) calloc.free(extraPtr);
+      if (filtersPtr != nullptr.cast()) {
+        _b.zvec_string_array_destroy(filtersPtr);
+      }
+    }
   }
 }

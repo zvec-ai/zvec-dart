@@ -36,6 +36,9 @@ ZvecBindings get _b => ZvecLibrary.bindings;
 ///   ..setVector('embedding', Float32List.fromList([0.1, 0.2, 0.3, 0.4]));
 /// ```
 class Doc {
+  static final Finalizer<Pointer<zvec_doc_t>> _finalizer =
+      Finalizer<Pointer<zvec_doc_t>>((ptr) => _b.zvec_doc_destroy(ptr));
+
   /// Create a new empty document.
   ///
   /// - [id]: Optional primary key. If not set, one will be auto-generated.
@@ -47,8 +50,9 @@ class Doc {
   ///   - [Float32List] -> VECTOR_FP32
   ///   - [Float64List] -> VECTOR_FP64
   Doc({String? id, Map<String, dynamic>? fields})
-      : _ptr = _b.zvec_doc_create(),
-        _ownsPtr = true {
+    : _ptr = _b.zvec_doc_create(),
+      _ownsPtr = true {
+    _attachFinalizer();
     if (id != null) {
       pk = id;
     }
@@ -66,16 +70,29 @@ class Doc {
   }
 
   /// Wrap an existing native doc pointer.
-  Doc._fromPtr(this._ptr) : _ownsPtr = false;
+  Doc._fromPtr(this._ptr, {bool ownsPtr = false}) : _ownsPtr = ownsPtr {
+    _attachFinalizer();
+  }
 
   /// Create from a native pointer (non-owning). Used internally by Collection.
   factory Doc.fromNativePtr(Pointer<zvec_doc_t> ptr) => Doc._fromPtr(ptr);
 
+  /// Create from a native pointer and take ownership of it.
+  factory Doc.fromOwnedNativePtr(Pointer<zvec_doc_t> ptr) =>
+      Doc._fromPtr(ptr, ownsPtr: true);
+
   final Pointer<zvec_doc_t> _ptr;
   final bool _ownsPtr;
+  bool _destroyed = false;
 
   /// The native pointer for internal use.
   Pointer<zvec_doc_t> get nativePtr => _ptr;
+
+  void _attachFinalizer() {
+    if (_ownsPtr && _ptr != nullptr) {
+      _finalizer.attach(this, _ptr, detach: this);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Primary key
@@ -162,13 +179,15 @@ class Doc {
       for (var i = 0; i < vector.length; i++) {
         dataPtr[i] = vector[i];
       }
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.vectorFp32.value,
-        dataPtr.cast(),
-        vector.length * sizeOf<Float>(),
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.vectorFp32.value,
+          dataPtr.cast(),
+          vector.length * sizeOf<Float>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(dataPtr);
@@ -183,13 +202,15 @@ class Doc {
       for (var i = 0; i < vector.length; i++) {
         dataPtr[i] = vector[i];
       }
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.vectorFp64.value,
-        dataPtr.cast(),
-        vector.length * sizeOf<Double>(),
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.vectorFp64.value,
+          dataPtr.cast(),
+          vector.length * sizeOf<Double>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(dataPtr);
@@ -210,13 +231,15 @@ class Doc {
     final namePtr = name.toNativeUtf8().cast<Char>();
     final valuePtr = value.toNativeUtf8();
     try {
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.string.value,
-        valuePtr.cast(),
-        valuePtr.length,
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.string.value,
+          valuePtr.cast(),
+          valuePtr.length,
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(valuePtr);
@@ -228,13 +251,15 @@ class Doc {
     final valuePtr = calloc<Int64>();
     try {
       valuePtr.value = value;
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.int64.value,
-        valuePtr.cast(),
-        sizeOf<Int64>(),
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.int64.value,
+          valuePtr.cast(),
+          sizeOf<Int64>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(valuePtr);
@@ -246,13 +271,15 @@ class Doc {
     final valuePtr = calloc<Double>();
     try {
       valuePtr.value = value;
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.float64.value,
-        valuePtr.cast(),
-        sizeOf<Double>(),
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.float64.value,
+          valuePtr.cast(),
+          sizeOf<Double>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(valuePtr);
@@ -264,13 +291,15 @@ class Doc {
     final valuePtr = calloc<Bool>();
     try {
       valuePtr.value = value;
-      checkError(_b.zvec_doc_add_field_by_value(
-        _ptr,
-        namePtr,
-        DataType.bool_.value,
-        valuePtr.cast(),
-        sizeOf<Bool>(),
-      ));
+      checkError(
+        _b.zvec_doc_add_field_by_value(
+          _ptr,
+          namePtr,
+          DataType.bool_.value,
+          valuePtr.cast(),
+          sizeOf<Bool>(),
+        ),
+      );
     } finally {
       calloc.free(namePtr);
       calloc.free(valuePtr);
@@ -289,7 +318,12 @@ class Doc {
     final sizePtr = calloc<Size>();
     try {
       final rc = _b.zvec_doc_get_field_value_pointer(
-        _ptr, namePtr, DataType.string.value, valuePtr, sizePtr);
+        _ptr,
+        namePtr,
+        DataType.string.value,
+        valuePtr,
+        sizePtr,
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       if (valuePtr.value == nullptr) return null;
       return valuePtr.value.cast<Utf8>().toDartString(length: sizePtr.value);
@@ -307,7 +341,12 @@ class Doc {
     final valuePtr = calloc<Int64>();
     try {
       final rc = _b.zvec_doc_get_field_value_basic(
-        _ptr, namePtr, DataType.int64.value, valuePtr.cast(), sizeOf<Int64>());
+        _ptr,
+        namePtr,
+        DataType.int64.value,
+        valuePtr.cast(),
+        sizeOf<Int64>(),
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       return valuePtr.value;
     } finally {
@@ -323,7 +362,12 @@ class Doc {
     final valuePtr = calloc<Double>();
     try {
       final rc = _b.zvec_doc_get_field_value_basic(
-        _ptr, namePtr, DataType.float64.value, valuePtr.cast(), sizeOf<Double>());
+        _ptr,
+        namePtr,
+        DataType.float64.value,
+        valuePtr.cast(),
+        sizeOf<Double>(),
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       return valuePtr.value;
     } finally {
@@ -339,7 +383,12 @@ class Doc {
     final valuePtr = calloc<Float>();
     try {
       final rc = _b.zvec_doc_get_field_value_basic(
-        _ptr, namePtr, DataType.float32.value, valuePtr.cast(), sizeOf<Float>());
+        _ptr,
+        namePtr,
+        DataType.float32.value,
+        valuePtr.cast(),
+        sizeOf<Float>(),
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       return valuePtr.value;
     } finally {
@@ -355,7 +404,12 @@ class Doc {
     final valuePtr = calloc<Bool>();
     try {
       final rc = _b.zvec_doc_get_field_value_basic(
-        _ptr, namePtr, DataType.bool_.value, valuePtr.cast(), sizeOf<Bool>());
+        _ptr,
+        namePtr,
+        DataType.bool_.value,
+        valuePtr.cast(),
+        sizeOf<Bool>(),
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       return valuePtr.value;
     } finally {
@@ -372,7 +426,12 @@ class Doc {
     final sizePtr = calloc<Size>();
     try {
       final rc = _b.zvec_doc_get_field_value_pointer(
-        _ptr, namePtr, DataType.vectorFp32.value, valuePtr, sizePtr);
+        _ptr,
+        namePtr,
+        DataType.vectorFp32.value,
+        valuePtr,
+        sizePtr,
+      );
       if (rc != zvec_error_code_t.ZVEC_OK) return null;
       if (valuePtr.value == nullptr) return null;
       final length = sizePtr.value ~/ sizeOf<Float>();
@@ -413,8 +472,10 @@ class Doc {
 
   /// Destroy the native document. Only call if this object owns the pointer.
   void destroy() {
-    if (_ownsPtr) {
+    if (_ownsPtr && !_destroyed) {
+      _finalizer.detach(this);
       _b.zvec_doc_destroy(_ptr);
+      _destroyed = true;
     }
   }
 

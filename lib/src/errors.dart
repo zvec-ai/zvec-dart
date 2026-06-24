@@ -36,9 +36,10 @@ enum ZvecErrorCode {
   const ZvecErrorCode(this.value);
   final int value;
 
-  static ZvecErrorCode fromValue(int v) =>
-      ZvecErrorCode.values.firstWhere((e) => e.value == v,
-          orElse: () => ZvecErrorCode.unknown);
+  static ZvecErrorCode fromValue(int v) => ZvecErrorCode.values.firstWhere(
+    (e) => e.value == v,
+    orElse: () => ZvecErrorCode.unknown,
+  );
 }
 
 /// Exception thrown when a Zvec C API call fails.
