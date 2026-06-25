@@ -1,0 +1,44 @@
+diff --git a/src/ailego/utility/memory_helper.cc b/src/ailego/utility/memory_helper.cc
+index 0203587..9e8be41 100644
+--- a/src/ailego/utility/memory_helper.cc
++++ b/src/ailego/utility/memory_helper.cc
+@@ -15,5 +15,6 @@
+ #include "memory_helper.h"
+ #include <cassert>
++#include <cstdlib>
+ #include <cstdio>
+ #include <cstring>
+ #include <fstream>
+@@ -461,6 +462,13 @@ void *MemoryHelper::AllocateAligned(size_t size, size_t alignment,
+   const size_t aligned_size = (size + alignment - 1) / alignment * alignment;
+ #if defined(_WIN64) || defined(_WIN32)
+   void *ptr = ::_aligned_malloc(aligned_size, alignment);
++#elif defined(__ANDROID__)
++  void *ptr = nullptr;
++  const size_t posix_alignment =
++      alignment < sizeof(void *) ? sizeof(void *) : alignment;
++  if (::posix_memalign(&ptr, posix_alignment, aligned_size) != 0) {
++    ptr = nullptr;
++  }
+ #else
+   void *ptr = std::aligned_alloc(alignment, aligned_size);
+ #endif
+diff --git a/src/db/index/column/fts_column/posting/bitpacked_posting_list.cc b/src/db/index/column/fts_column/posting/bitpacked_posting_list.cc
+index 20f8ca7..8d77f30 100644
+--- a/src/db/index/column/fts_column/posting/bitpacked_posting_list.cc
++++ b/src/db/index/column/fts_column/posting/bitpacked_posting_list.cc
+@@ -53,7 +53,14 @@ inline auto make_aligned_uint32_array(size_t count) {
+ #ifdef _MSC_VER
+   auto *ptr = static_cast<uint32_t *>(_aligned_malloc(num_bytes, 16));
+   return std::unique_ptr<uint32_t[], decltype(&_aligned_free)>(ptr,
+                                                                _aligned_free);
++#elif defined(__ANDROID__)
++  void *raw = nullptr;
++  if (::posix_memalign(&raw, 16, num_bytes) != 0) {
++    raw = nullptr;
++  }
++  auto *ptr = static_cast<uint32_t *>(raw);
++  return std::unique_ptr<uint32_t[], decltype(&std::free)>(ptr, std::free);
+ #else
+   auto *ptr = static_cast<uint32_t *>(std::aligned_alloc(16, num_bytes));
+   return std::unique_ptr<uint32_t[], decltype(&std::free)>(ptr, std::free);

@@ -81,6 +81,38 @@ jobs:
         run: bash scripts/run_tests.sh test/zvec_native_test.dart
 
   # =========================================================================
+  # Android native build (validates the published minSdk native ABI)
+  # =========================================================================
+  android-native-build:
+    name: Android native build
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager --install "ndk;27.2.12479018"
+
+      - name: Set NDK environment
+        run: echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+
+      - name: Build Android arm64-v8a API 21
+        run: bash scripts/build_android.sh arm64-v8a 21 Release
+
+      - name: Verify Android artifact
+        run: file android/src/main/jniLibs/arm64-v8a/libzvec.so
+
+  # =========================================================================
   # Package dry-run and example integration test
   # =========================================================================
   package-tests:
