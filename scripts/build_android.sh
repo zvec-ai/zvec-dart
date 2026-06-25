@@ -28,6 +28,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ZVEC_SRC="$PROJECT_ROOT/third_party/zvec"
+PATCH_DIR="$PROJECT_ROOT/patches/zvec"
 
 ABI=${1:-"arm64-v8a"}
 API_LEVEL=${2:-21}
@@ -61,7 +62,25 @@ if [ ! -d "$ANDROID_NDK_HOME" ]; then
     exit 1
 fi
 
-export CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+ANDROID_CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+
+prepare_android_zvec_source() {
+    PATCHED_ZVEC_SRC="$PROJECT_ROOT/tmp/zvec_android_${ABI}_${API_LEVEL}_${BUILD_TYPE}/zvec"
+
+    echo "  Preparing patched zvec source: $PATCHED_ZVEC_SRC"
+    mkdir -p "$(dirname "$PATCHED_ZVEC_SRC")"
+    rsync -a --delete --exclude=".git" "$ZVEC_SRC/" "$PATCHED_ZVEC_SRC/"
+    find "$PATCHED_ZVEC_SRC" -name ".*_patched" -type f -delete
+
+    if [ -d "$PATCH_DIR" ]; then
+        local patch_file
+        for patch_file in "$PATCH_DIR"/*.patch; do
+            [ -e "$patch_file" ] || continue
+            echo "  Applying patch: ${patch_file#$PROJECT_ROOT/}"
+            patch -d "$PATCHED_ZVEC_SRC" -p1 < "$patch_file"
+        done
+    fi
+}
 
 echo "============================================"
 echo "  Zvec Android Build"
@@ -90,7 +109,7 @@ else
 
     mkdir -p "$HOST_BUILD_DIR"
     pushd "$HOST_BUILD_DIR" > /dev/null
-    cmake -DCMAKE_BUILD_TYPE="$BUILD_TYPE" "$ZVEC_SRC"
+    env -u CMAKE_TOOLCHAIN_FILE cmake -DCMAKE_BUILD_TYPE="$BUILD_TYPE" "$ZVEC_SRC"
     make -j"$(sysctl -n hw.ncpu 2>/dev/null || nproc)" protoc
     popd > /dev/null
 fi
@@ -108,13 +127,15 @@ pushd "$ZVEC_SRC" > /dev/null
 git submodule foreach --recursive 'git stash --include-untracked 2>/dev/null || true' > /dev/null 2>&1
 popd > /dev/null
 
+prepare_android_zvec_source
 ANDROID_BUILD_DIR="$PROJECT_ROOT/build/android_$ABI"
+rm -rf "$ANDROID_BUILD_DIR"
 mkdir -p "$ANDROID_BUILD_DIR"
 pushd "$ANDROID_BUILD_DIR" > /dev/null
 
-cmake \
+GIT_CEILING_DIRECTORIES="$PROJECT_ROOT/tmp" cmake \
     -DANDROID_NDK="$ANDROID_NDK_HOME" \
-    -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_CMAKE_TOOLCHAIN_FILE" \
     -DANDROID_ABI="$ABI" \
     -DANDROID_NATIVE_API_LEVEL="$API_LEVEL" \
     -DANDROID_STL="c++_static" \
@@ -122,9 +143,10 @@ cmake \
     -DBUILD_C_BINDINGS=ON \
     -DBUILD_PYTHON_BINDINGS=OFF \
     -DBUILD_TOOLS=OFF \
+    -DWITH_GFLAGS=OFF \
     -DCMAKE_INSTALL_PREFIX="./install" \
     -DGLOBAL_CC_PROTOBUF_PROTOC="$PROTOC_EXECUTABLE" \
-    "$ZVEC_SRC"
+    "$PATCHED_ZVEC_SRC"
 
 # Build only the zvec_c_api target (compiles all deps and links into a single .so)
 make -j"$(sysctl -n hw.ncpu 2>/dev/null || nproc)" zvec_c_api

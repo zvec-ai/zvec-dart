@@ -13,6 +13,7 @@ third_party/
 
 # Build scripts (only for SDK developers)
 scripts/
+patches/
 
 # Build intermediates
 /build/
