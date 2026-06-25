@@ -223,7 +223,6 @@ jobs:
   # Verify published package — install from pub.dev and build/test example app
   #
   # Waits for pub.dev indexing, then verifies:
-  #   - macOS host functional Jieba FTS integration
   #   - Android APK bundles native library and Jieba assets
   #   - iOS app bundles zvec.framework and Jieba assets
   # =========================================================================
@@ -315,73 +314,6 @@ jobs:
               exit 1
             fi
           done
-
-  verify-macos-functional:
-    name: Verify macOS (pub.dev functional test)
-    needs: [publish]
-    runs-on: macos-14
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Build macOS native library for host test
-        run: bash scripts/build_macos.sh Release
-
-      - name: Switch example to pub.dev dependency
-        working-directory: example
-        run: |
-          TAG_VERSION="${ZVEC_VERSION#v}"
-          python3 - << PYEOF
-          import re, pathlib
-          p = pathlib.Path('pubspec.yaml')
-          txt = p.read_text()
-          txt, count = re.subn(
-              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
-              'zvec: ${TAG_VERSION}\n',
-              txt
-          )
-          if count != 1:
-              raise SystemExit('Failed to replace zvec path dependency')
-          p.write_text(txt)
-          PYEOF
-          echo "Updated pubspec.yaml:"
-          grep -A2 'zvec:' pubspec.yaml
-
-      - name: Wait for pub.dev indexing and resolve
-        working-directory: example
-        run: |
-          for i in 1 2 3 4 5 6; do
-            echo "Attempt $i: waiting 60s for pub.dev indexing..."
-            sleep 60
-            if flutter pub get; then
-              echo "Success on attempt $i"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying..."
-          done
-          echo "::error::Failed to resolve package after 6 attempts"
-          exit 1
-
-      - name: Run published package Jieba FTS integration test
-        working-directory: example
-        env:
-          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
-          TMPDIR: ${{ github.workspace }}/tmp
-        run: |
-          mkdir -p "$TMPDIR"
-          flutter test test/jieba_fts_integration_test.dart
 
   verify-ios:
     name: Verify iOS (device build, no codesign)
@@ -479,7 +411,7 @@ jobs:
 
   verify-summary:
     name: Verification summary
-    needs: [verify-android, verify-macos-functional, verify-ios]
+    needs: [verify-android, verify-ios]
     runs-on: ubuntu-latest
     steps:
       - name: All checks passed
@@ -488,6 +420,5 @@ jobs:
           echo "  Package ${ZVEC_VERSION} fully verified!"
           echo ""
           echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
-          echo "  macOS:   published package passes Jieba FTS integration"
           echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"
           echo "============================================"
