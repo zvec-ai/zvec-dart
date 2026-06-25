@@ -1,7 +1,7 @@
 # =============================================================================
 # Test Workflow — Run Dart unit tests on every push to main
 #
-# Runs both pure-Dart tests and native FFI tests (requires macOS dylib).
+# Runs pure-Dart tests, native FFI tests, and pub package/consumer smoke tests.
 # =============================================================================
 name: "Test"
 
@@ -79,3 +79,75 @@ jobs:
 
       - name: Run native FFI tests
         run: bash scripts/run_tests.sh test/zvec_native_test.dart
+
+  # =========================================================================
+  # Package dry-run and example integration test
+  # =========================================================================
+  package-tests:
+    name: Package dry run and example integration
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Get submodule hash for cache key
+        id: zvec-hash
+        run: echo "hash=$(git submodule status third_party/zvec | awk '{print $1}' | tr -d '-')" >> $GITHUB_OUTPUT
+
+      - name: Cache native build
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: build/macos
+          key: native-macos-${{ runner.arch }}-${{ steps.zvec-hash.outputs.hash }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Prepare Jieba dictionary assets
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Remove submodule gitlink for pub validation
+        run: |
+          # Workaround for dart pub bug (dart-lang/pub#3789):
+          # pub incorrectly warns about submodule gitlink entries being gitignored.
+          git rm --cached third_party/zvec
+
+      - name: Dry-run pub package
+        run: dart pub publish --dry-run
+
+      - name: Build macOS native library
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: bash scripts/build_macos.sh Release
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Run example Jieba FTS integration test
+        working-directory: example
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
+        run: flutter test test/jieba_fts_integration_test.dart
+
+      - name: Build example asset bundle and verify package assets
+        working-directory: example
+        run: |
+          flutter build bundle --debug
+          for file in jieba.dict.utf8 hmm_model.utf8; do
+            asset="build/flutter_assets/packages/zvec/assets/jieba_dict/$file"
+            if [ ! -s "$asset" ]; then
+              echo "::error::Missing packaged Jieba asset: $asset"
+              exit 1
+            fi
+            ls -lh "$asset"
+          done

@@ -232,10 +232,12 @@ jobs:
         run: dart pub publish --force
 
   # =========================================================================
-  # Verify published package — install from pub.dev and build example app
+  # Verify published package — install from pub.dev and build/test example app
   #
-  # Waits for pub.dev indexing (~2 min), then builds example for both
-  # Android and iOS to verify native libraries are correctly bundled.
+  # Waits for pub.dev indexing, then verifies:
+  #   - macOS host functional Jieba FTS integration
+  #   - Android APK bundles native library and Jieba assets
+  #   - iOS app bundles zvec.framework and Jieba assets
   # =========================================================================
   verify-android:
     name: Verify Android (APK static check)
@@ -254,18 +256,19 @@ jobs:
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
-          cat > /tmp/fix_dep.py << PYEOF
+          python3 - << PYEOF
           import re, pathlib
           p = pathlib.Path('pubspec.yaml')
           txt = p.read_text()
-          txt = re.sub(
+          txt, count = re.subn(
               r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
-              'zvec: ^${TAG_VERSION}\n',
+              'zvec: ${TAG_VERSION}\n',
               txt
           )
+          if count != 1:
+              raise SystemExit('Failed to replace zvec path dependency')
           p.write_text(txt)
           PYEOF
-          python3 /tmp/fix_dep.py
           echo "Updated pubspec.yaml:"
           grep -A2 'zvec:' pubspec.yaml
 
@@ -313,6 +316,84 @@ jobs:
             echo "::error::lib/arm64-v8a/libzvec.so NOT FOUND in APK"
             exit 1
           fi
+          echo ""
+          echo "=== Verify packaged Jieba assets ==="
+          for file in jieba.dict.utf8 hmm_model.utf8; do
+            asset="assets/flutter_assets/packages/zvec/assets/jieba_dict/$file"
+            if unzip -l "$APK" | grep -q "$asset"; then
+              unzip -l "$APK" | grep "$asset"
+            else
+              echo "::error::Missing packaged Jieba asset in APK: $asset"
+              exit 1
+            fi
+          done
+
+  verify-macos-functional:
+    name: Verify macOS (pub.dev functional test)
+    needs: [publish]
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build macOS native library for host test
+        run: bash scripts/build_macos.sh Release
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          python3 - << PYEOF
+          import re, pathlib
+          p = pathlib.Path('pubspec.yaml')
+          txt = p.read_text()
+          txt, count = re.subn(
+              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
+              'zvec: ${TAG_VERSION}\n',
+              txt
+          )
+          if count != 1:
+              raise SystemExit('Failed to replace zvec path dependency')
+          p.write_text(txt)
+          PYEOF
+          echo "Updated pubspec.yaml:"
+          grep -A2 'zvec:' pubspec.yaml
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i: waiting 60s for pub.dev indexing..."
+            sleep 60
+            if flutter pub get; then
+              echo "Success on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "::error::Failed to resolve package after 6 attempts"
+          exit 1
+
+      - name: Run published package Jieba FTS integration test
+        working-directory: example
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
+          TMPDIR: ${{ github.workspace }}/tmp
+        run: |
+          mkdir -p "$TMPDIR"
+          flutter test test/jieba_fts_integration_test.dart
 
   verify-ios:
     name: Verify iOS (device build, no codesign)
@@ -331,18 +412,19 @@ jobs:
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
-          cat > /tmp/fix_dep.py << PYEOF
+          python3 - << PYEOF
           import re, pathlib
           p = pathlib.Path('pubspec.yaml')
           txt = p.read_text()
-          txt = re.sub(
+          txt, count = re.subn(
               r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
-              'zvec: ^${TAG_VERSION}\n',
+              'zvec: ${TAG_VERSION}\n',
               txt
           )
+          if count != 1:
+              raise SystemExit('Failed to replace zvec path dependency')
           p.write_text(txt)
           PYEOF
-          python3 /tmp/fix_dep.py
           echo "Updated pubspec.yaml:"
           grep -A2 'zvec:' pubspec.yaml
 
@@ -395,9 +477,21 @@ jobs:
             exit 1
           fi
 
+      - name: Verify packaged Jieba assets
+        working-directory: example
+        run: |
+          for file in jieba.dict.utf8 hmm_model.utf8; do
+            asset=$(find build/ios -path "*/flutter_assets/packages/zvec/assets/jieba_dict/$file" -type f | head -1)
+            if [ -z "$asset" ] || [ ! -s "$asset" ]; then
+              echo "::error::Missing packaged Jieba asset in iOS build: $file"
+              exit 1
+            fi
+            ls -lh "$asset"
+          done
+
   verify-summary:
     name: Verification summary
-    needs: [verify-android, verify-ios]
+    needs: [verify-android, verify-macos-functional, verify-ios]
     runs-on: ubuntu-latest
     steps:
       - name: All checks passed
@@ -405,6 +499,7 @@ jobs:
           echo "============================================"
           echo "  Package ${ZVEC_VERSION} fully verified!"
           echo ""
-          echo "  Android: APK contains arm64-v8a libzvec.so (valid ELF)"
-          echo "  iOS:     zvec.framework present with arm64 architecture"
+          echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
+          echo "  macOS:   published package passes Jieba FTS integration"
+          echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"
           echo "============================================"

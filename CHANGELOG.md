@@ -1,3 +1,8 @@
+## 0.5.1
+
+* Bump native zvec engine to v0.5.1.
+* No Dart API changes.
+
 ## 0.5.0
 
 * Bump native zvec engine to v0.5.0.
