@@ -1,8 +1,8 @@
 # =============================================================================
 # Test Workflow — Run Dart unit tests on every push to main
 #
-# Runs pure-Dart tests, native FFI tests, desktop build smoke tests, and pub
-# package/consumer smoke tests.
+# Runs pure-Dart tests, native FFI tests, desktop native/app smoke tests, and
+# pub package/consumer smoke tests.
 # =============================================================================
 name: "Test"
 
@@ -114,7 +114,7 @@ jobs:
         run: file android/src/main/jniLibs/arm64-v8a/libzvec.so
 
   # =========================================================================
-  # Desktop native + Flutter app build smoke tests
+  # Desktop native FFI tests + Flutter app build smoke tests
   # =========================================================================
   desktop-macos-build:
     name: Desktop macOS build
@@ -140,11 +140,19 @@ jobs:
         with:
           channel: stable
 
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Build macOS native library
         run: bash scripts/build_macos.sh Release
 
       - name: Verify macOS native artifact
         run: file macos/zvec.framework/zvec
+
+      - name: Run macOS native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
+        run: flutter test test/zvec_native_test.dart
 
       - name: Generate macOS example platform files
         working-directory: example
@@ -190,11 +198,19 @@ jobs:
         with:
           channel: stable
 
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Build Linux native library
         run: bash scripts/build_linux.sh Release
 
       - name: Verify Linux native artifact
         run: file linux/lib/libzvec.so
+
+      - name: Run Linux native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/linux/libzvec.so
+        run: flutter test test/zvec_native_test.dart
 
       - name: Generate Linux example platform files
         working-directory: example
@@ -233,6 +249,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Build Windows native library
         shell: powershell
         run: .\scripts\build_windows.ps1 -BuildType Release
@@ -240,6 +259,11 @@ jobs:
       - name: Verify Windows native artifact
         shell: powershell
         run: Get-Item windows\lib\zvec.dll
+
+      - name: Run Windows native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/windows/zvec.dll
+        run: flutter test test/zvec_native_test.dart
 
       - name: Generate Windows example platform files
         working-directory: example
