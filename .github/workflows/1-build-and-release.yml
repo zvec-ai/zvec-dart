@@ -380,6 +380,7 @@ jobs:
   # Waits for pub.dev indexing, then verifies:
   #   - Android APK bundles native library and Jieba assets
   #   - iOS app bundles zvec.framework and Jieba assets
+  #   - Desktop apps bundle the release native artifact and can execute FFI calls
   # =========================================================================
   verify-android:
     name: Verify Android (APK static check)
@@ -633,6 +634,17 @@ jobs:
             exit 1
           fi
 
+      - name: Run macOS runtime smoke test
+        working-directory: example
+        run: |
+          FRAMEWORK=$(find build/macos -name "zvec.framework" -type d | head -1)
+          if [ -z "$FRAMEWORK" ]; then
+            echo "::error::zvec.framework NOT found in macOS build output"
+            exit 1
+          fi
+          ZVEC_LIBRARY_PATH="$FRAMEWORK/zvec" \
+            flutter test test/release_runtime_smoke_test.dart
+
   verify-linux:
     name: Verify Linux (desktop build)
     needs: [publish]
@@ -716,6 +728,17 @@ jobs:
             exit 1
           fi
 
+      - name: Run Linux runtime smoke test
+        working-directory: example
+        run: |
+          LIB=$(find build/linux -name "libzvec.so" -type f | head -1)
+          if [ -z "$LIB" ]; then
+            echo "::error::libzvec.so NOT found in Linux build output"
+            exit 1
+          fi
+          ZVEC_LIBRARY_PATH="$LIB" \
+            flutter test test/release_runtime_smoke_test.dart
+
   verify-windows:
     name: Verify Windows (desktop build)
     needs: [publish]
@@ -778,6 +801,20 @@ jobs:
           }
           Get-Item $dll.FullName
 
+      - name: Run Windows runtime smoke test
+        working-directory: example
+        shell: powershell
+        run: |
+          $dll = Get-ChildItem -Path build\windows -Filter zvec.dll -Recurse | Select-Object -First 1
+          if (-not $dll) {
+            throw "zvec.dll NOT found in Windows build output"
+          }
+          $env:ZVEC_LIBRARY_PATH = $dll.FullName
+          flutter test test\release_runtime_smoke_test.dart
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
   verify-summary:
     name: Verification summary
     needs: [verify-android, verify-ios, verify-macos, verify-linux, verify-windows]
@@ -790,7 +827,7 @@ jobs:
           echo ""
           echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
           echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"
-          echo "  macOS:   desktop build downloads and bundles zvec.framework"
-          echo "  Linux:   desktop build downloads and bundles libzvec.so"
-          echo "  Windows: desktop build downloads and bundles zvec.dll"
+          echo "  macOS:   desktop build downloads/bundles zvec.framework and runs FFI smoke test"
+          echo "  Linux:   desktop build downloads/bundles libzvec.so and runs FFI smoke test"
+          echo "  Windows: desktop build downloads/bundles zvec.dll and runs FFI smoke test"
           echo "============================================"

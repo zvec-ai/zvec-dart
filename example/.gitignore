@@ -54,3 +54,4 @@ test/
 !test/
 test/*
 !test/jieba_fts_integration_test.dart
+!test/release_runtime_smoke_test.dart
