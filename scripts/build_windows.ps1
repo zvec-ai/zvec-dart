@@ -26,8 +26,8 @@ Write-Host "[1/3] Building host protoc..."
 
 $HostBuildDir = Join-Path $ProjectRoot "build\host"
 $ProtocCandidates = @(
-    Join-Path $HostBuildDir "bin\protoc.exe",
-    Join-Path $HostBuildDir "bin\$BuildType\protoc.exe"
+    (Join-Path $HostBuildDir "bin\protoc.exe")
+    (Join-Path $HostBuildDir "bin\$BuildType\protoc.exe")
 )
 $ProtocExecutable = $ProtocCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
