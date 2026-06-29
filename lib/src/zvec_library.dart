@@ -26,6 +26,8 @@ import 'zvec_bindings.dart';
 /// - Android: loads `libzvec.so` via [DynamicLibrary.open]
 /// - iOS: loads embedded dynamic framework via
 ///   [DynamicLibrary.open] (`zvec.framework/zvec`)
+/// - Desktop: loads the Flutter-bundled native library, with a fallback for
+///   locally built test binaries.
 class ZvecLibrary {
   ZvecLibrary._();
 
@@ -178,20 +180,55 @@ class ZvecLibrary {
     if (Platform.isIOS) {
       // zvec is packaged as an embedded dynamic framework.
       // CocoaPods places it in the app's Frameworks/ directory.
-      return DynamicLibrary.open('zvec.framework/zvec');
+      return _openFirst(['zvec.framework/zvec']);
     }
-    // For testing on host platforms (macOS/Linux/Windows)
     if (Platform.isMacOS) {
-      return DynamicLibrary.open('libzvec.dylib');
+      return _openFirst([
+        'zvec.framework/zvec',
+        _appFrameworkPath('zvec.framework/zvec'),
+        'libzvec.dylib',
+      ]);
     }
     if (Platform.isLinux) {
-      return DynamicLibrary.open('libzvec.so');
+      return _openFirst(['libzvec.so', _executableSiblingPath('libzvec.so')]);
     }
     if (Platform.isWindows) {
-      return DynamicLibrary.open('zvec.dll');
+      return _openFirst(['zvec.dll', _executableSiblingPath('zvec.dll')]);
     }
     throw UnsupportedError(
       'Zvec is not supported on ${Platform.operatingSystem}',
     );
+  }
+
+  static DynamicLibrary _openFirst(List<String> candidates) {
+    final errors = <String>[];
+    for (final candidate in candidates) {
+      try {
+        return DynamicLibrary.open(candidate);
+      } on ArgumentError catch (error) {
+        errors.add('$candidate: $error');
+      } on OSError catch (error) {
+        errors.add('$candidate: $error');
+      }
+    }
+
+    throw UnsupportedError(
+      'Unable to load Zvec native library on ${Platform.operatingSystem}. '
+      'Tried: ${candidates.join(', ')}. '
+      'Set ZVEC_LIBRARY_PATH to an absolute native library path to override. '
+      'Errors: ${errors.join(' | ')}',
+    );
+  }
+
+  static String _appFrameworkPath(String relativeFrameworkPath) {
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    return _join(
+      _join(executableDir, '..'),
+      'Frameworks/$relativeFrameworkPath',
+    );
+  }
+
+  static String _executableSiblingPath(String libraryName) {
+    return _join(File(Platform.resolvedExecutable).parent.path, libraryName);
   }
 }

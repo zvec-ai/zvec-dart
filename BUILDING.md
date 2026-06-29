@@ -13,8 +13,9 @@
 | Android SDK  | API 21+     | Android Studio → SDK Manager                            |
 | Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
 | CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |
-| Xcode        | ≥ 15.0      | Mac App Store (iOS only)                                |
+| Xcode        | ≥ 15.0      | Mac App Store (iOS/macOS only)                          |
 | CocoaPods    | ≥ 1.15      | `sudo gem install cocoapods`                            |
+| Visual Studio| 2022+       | Required for Windows desktop builds                     |
 
 ## 1. Clone (with submodules)
 
@@ -37,7 +38,7 @@ flutter pub get
 ## 3. Build native libraries
 
 ```bash
-# All platforms in one go
+# All supported targets for the current host in one go
 bash scripts/build_all.sh
 
 # Android only — output: android/src/main/jniLibs/<abi>/libzvec.so
@@ -46,6 +47,15 @@ bash scripts/build_android.sh arm64-v8a
 # iOS only — output: ios/zvec.framework/
 bash scripts/build_ios.sh OS               # device (arm64)
 bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon simulator (optional)
+
+# macOS desktop — output: macos/zvec.framework/
+bash scripts/build_macos.sh
+
+# Linux desktop — output: linux/lib/libzvec.so
+bash scripts/build_linux.sh
+
+# Windows desktop — output: windows/lib/zvec.dll
+powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 ```
 
 ## 4. Run tests
@@ -58,7 +68,7 @@ flutter test test/zvec_test.dart
 
 ```bash
 cd example
-flutter run -d <device-id>          # Android or iOS
+flutter run -d <device-id>          # Android, iOS, macOS, Linux, or Windows
 # iOS first time only:
 (cd ios && pod install)
 ```

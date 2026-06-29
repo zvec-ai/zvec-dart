@@ -60,6 +60,35 @@ jobs:
             exit 1
           fi
 
+      - name: Verify native package versions
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          python3 - << PYEOF
+          import pathlib
+          import re
+          import sys
+
+          expected = "${TAG_VERSION}"
+          checks = [
+              ("android/build.gradle", r'def ZVEC_VERSION = "([^"]+)"'),
+              ("ios/zvec.podspec", r"s\\.version\\s*=\\s*'([^']+)'"),
+              ("macos/zvec.podspec", r"s\\.version\\s*=\\s*'([^']+)'"),
+              ("linux/CMakeLists.txt", r'set\\(ZVEC_VERSION "([^"]+)"\\)'),
+              ("windows/CMakeLists.txt", r'set\\(ZVEC_VERSION "([^"]+)"\\)'),
+          ]
+          failed = False
+          for path, pattern in checks:
+              text = pathlib.Path(path).read_text()
+              match = re.search(pattern, text)
+              actual = match.group(1) if match else None
+              print(f"{path}: {actual}")
+              if actual != expected:
+                  print(f"::error::{path} version {actual!r} != tag {expected!r}")
+                  failed = True
+          if failed:
+              sys.exit(1)
+          PYEOF
+
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
         with:
@@ -90,7 +119,7 @@ jobs:
           path: build/release/libzvec-android-arm64-v8a.zip
 
   # =========================================================================
-  # Build iOS (arm64 device) — runs in parallel with Android
+  # Build iOS (arm64 device) — runs in parallel with Android/Desktop
   # =========================================================================
   build-ios:
     name: Build iOS
@@ -126,11 +155,131 @@ jobs:
           path: build/release/zvec-framework-ios.zip
 
   # =========================================================================
-  # Create GitHub Release — waits for both builds to succeed
+  # Build macOS desktop framework
+  # =========================================================================
+  build-macos:
+    name: Build macOS
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Build macOS arm64
+        run: bash scripts/build_macos.sh Release
+
+      - name: Verify macOS artifacts
+        run: |
+          file macos/zvec.framework/zvec
+          ls -lh build/release/
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-libs
+          path: build/release/zvec-framework-macos-arm64.zip
+
+  # =========================================================================
+  # Build Linux desktop library
+  # =========================================================================
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libaio-dev zip
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Build Linux x64
+        run: bash scripts/build_linux.sh Release
+
+      - name: Verify Linux artifacts
+        run: |
+          file linux/lib/libzvec.so
+          ls -lh build/release/
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-libs
+          path: build/release/libzvec-linux-x64.zip
+
+  # =========================================================================
+  # Build Windows desktop library
+  # =========================================================================
+  build-windows:
+    name: Build Windows
+    runs-on: windows-2022
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+
+      - name: Build Windows x64
+        shell: powershell
+        run: .\scripts\build_windows.ps1 -BuildType Release
+
+      - name: Verify Windows artifacts
+        shell: powershell
+        run: |
+          Get-Item windows\lib\zvec.dll
+          Get-ChildItem build\release
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-libs
+          path: build/release/libzvec-windows-x64.zip
+
+  # =========================================================================
+  # Create GitHub Release — waits for all native builds to succeed
   # =========================================================================
   release:
     name: Create GitHub Release
-    needs: [build-android, build-ios]
+    needs: [build-android, build-ios, build-macos, build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -155,6 +304,9 @@ jobs:
           |----------|-----|------|
           | Android | arm64-v8a | libzvec-android-arm64-v8a.zip |
           | iOS | arm64 | zvec-framework-ios.zip |
+          | macOS | arm64 | zvec-framework-macos-arm64.zip |
+          | Linux | x64 | libzvec-linux-x64.zip |
+          | Windows | x64 | libzvec-windows-x64.zip |
 
           These binaries are automatically downloaded during `flutter build`.
           EOF
@@ -162,6 +314,9 @@ jobs:
           gh release create "${ZVEC_VERSION}" \
             artifacts/libzvec-android-arm64-v8a.zip \
             artifacts/zvec-framework-ios.zip \
+            artifacts/zvec-framework-macos-arm64.zip \
+            artifacts/libzvec-linux-x64.zip \
+            artifacts/libzvec-windows-x64.zip \
             --repo "${{ github.repository }}" \
             --title "${ZVEC_VERSION}" \
             --notes-file /tmp/release_notes.md
@@ -409,9 +564,223 @@ jobs:
             ls -lh "$asset"
           done
 
+  verify-macos:
+    name: Verify macOS (desktop build)
+    needs: [publish]
+    runs-on: macos-14
+    steps:
+      - name: Checkout (for example app)
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          python3 - << PYEOF
+          import re, pathlib
+          p = pathlib.Path('pubspec.yaml')
+          txt = p.read_text()
+          txt, count = re.subn(
+              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
+              'zvec: ${TAG_VERSION}\n',
+              txt
+          )
+          if count != 1:
+              raise SystemExit('Failed to replace zvec path dependency')
+          p.write_text(txt)
+          PYEOF
+          grep -A2 'zvec:' pubspec.yaml
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i: waiting 60s for pub.dev indexing..."
+            sleep 60
+            if flutter pub get; then
+              echo "Success on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "::error::Failed to resolve package after 6 attempts"
+          exit 1
+
+      - name: Generate macOS platform files
+        working-directory: example
+        run: flutter create --platforms=macos .
+
+      - name: Build macOS app
+        working-directory: example
+        run: flutter build macos --debug
+
+      - name: Verify zvec.framework
+        working-directory: example
+        run: |
+          FRAMEWORK=$(find build/macos -name "zvec.framework" -type d | head -1)
+          if [ -z "$FRAMEWORK" ]; then
+            echo "::error::zvec.framework NOT found in macOS build output"
+            exit 1
+          fi
+          lipo -info "$FRAMEWORK/zvec"
+          if ! lipo -info "$FRAMEWORK/zvec" | grep -q "arm64"; then
+            echo "::error::arm64 architecture NOT found in zvec.framework"
+            exit 1
+          fi
+
+  verify-linux:
+    name: Verify Linux (desktop build)
+    needs: [publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for example app)
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            cmake \
+            libgtk-3-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        run: |
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          python3 - << PYEOF
+          import re, pathlib
+          p = pathlib.Path('pubspec.yaml')
+          txt = p.read_text()
+          txt, count = re.subn(
+              r'zvec:\n(\s+#[^\n]*\n)*\s+path: \.\./\n',
+              'zvec: ${TAG_VERSION}\n',
+              txt
+          )
+          if count != 1:
+              raise SystemExit('Failed to replace zvec path dependency')
+          p.write_text(txt)
+          PYEOF
+          grep -A2 'zvec:' pubspec.yaml
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i: waiting 60s for pub.dev indexing..."
+            sleep 60
+            if flutter pub get; then
+              echo "Success on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "::error::Failed to resolve package after 6 attempts"
+          exit 1
+
+      - name: Generate Linux platform files
+        working-directory: example
+        run: flutter create --platforms=linux .
+
+      - name: Build Linux app
+        working-directory: example
+        run: flutter build linux --debug
+
+      - name: Verify libzvec.so
+        working-directory: example
+        run: |
+          LIB=$(find build/linux -name "libzvec.so" -type f | head -1)
+          if [ -z "$LIB" ]; then
+            echo "::error::libzvec.so NOT found in Linux build output"
+            exit 1
+          fi
+          file "$LIB"
+          if ! file "$LIB" | grep -q "ELF.*shared object"; then
+            echo "::error::Unexpected format for libzvec.so"
+            exit 1
+          fi
+          if ! file "$LIB" | grep -q "x86-64"; then
+            echo "::error::Expected x86-64 libzvec.so"
+            exit 1
+          fi
+
+  verify-windows:
+    name: Verify Windows (desktop build)
+    needs: [publish]
+    runs-on: windows-2022
+    steps:
+      - name: Checkout (for example app)
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Switch example to pub.dev dependency
+        working-directory: example
+        shell: powershell
+        run: |
+          $tagVersion = "${env:ZVEC_VERSION}".TrimStart("v")
+          $pubspec = "pubspec.yaml"
+          $text = Get-Content $pubspec -Raw
+          $regex = [regex]::new("zvec:\r?\n(\s+#[^\r\n]*\r?\n)*\s+path: \.\./\r?\n")
+          $updated = $regex.Replace($text, "zvec: $tagVersion`n", 1)
+          if ($updated -eq $text) {
+            throw "Failed to replace zvec path dependency"
+          }
+          Set-Content -Path $pubspec -Value $updated -Encoding UTF8
+          Select-String -Path $pubspec -Pattern "zvec:" -Context 0,2
+
+      - name: Wait for pub.dev indexing and resolve
+        working-directory: example
+        shell: powershell
+        run: |
+          for ($i = 1; $i -le 6; $i++) {
+            Write-Host "Attempt ${i}: waiting 60s for pub.dev indexing..."
+            Start-Sleep -Seconds 60
+            flutter pub get
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Success on attempt $i"
+              exit 0
+            }
+            Write-Host "Attempt $i failed, retrying..."
+          }
+          throw "Failed to resolve package after 6 attempts"
+
+      - name: Generate Windows platform files
+        working-directory: example
+        run: flutter create --platforms=windows .
+
+      - name: Build Windows app
+        working-directory: example
+        run: flutter build windows --debug
+
+      - name: Verify zvec.dll
+        working-directory: example
+        shell: powershell
+        run: |
+          $dll = Get-ChildItem -Path build\windows -Filter zvec.dll -Recurse | Select-Object -First 1
+          if (-not $dll) {
+            throw "zvec.dll NOT found in Windows build output"
+          }
+          Get-Item $dll.FullName
+
   verify-summary:
     name: Verification summary
-    needs: [verify-android, verify-ios]
+    needs: [verify-android, verify-ios, verify-macos, verify-linux, verify-windows]
     runs-on: ubuntu-latest
     steps:
       - name: All checks passed
@@ -421,4 +790,7 @@ jobs:
           echo ""
           echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
           echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"
+          echo "  macOS:   desktop build downloads and bundles zvec.framework"
+          echo "  Linux:   desktop build downloads and bundles libzvec.so"
+          echo "  Windows: desktop build downloads and bundles zvec.dll"
           echo "============================================"

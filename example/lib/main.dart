@@ -11,23 +11,24 @@ void main() {
 }
 
 class ZvecDemoApp extends StatelessWidget {
-  const ZvecDemoApp({super.key});
+  const ZvecDemoApp({super.key, this.autoRun = true});
+
+  final bool autoRun;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Zvec Demo',
-      theme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const DemoPage(),
+      theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
+      home: DemoPage(autoRun: autoRun),
     );
   }
 }
 
 class DemoPage extends StatefulWidget {
-  const DemoPage({super.key});
+  const DemoPage({super.key, this.autoRun = true});
+
+  final bool autoRun;
 
   @override
   State<DemoPage> createState() => _DemoPageState();
@@ -40,8 +41,9 @@ class _DemoPageState extends State<DemoPage> {
   @override
   void initState() {
     super.initState();
-    // Auto-run the demo on startup for testing
-    Future.delayed(const Duration(milliseconds: 500), _runDemo);
+    if (widget.autoRun) {
+      Future.delayed(const Duration(milliseconds: 500), _runDemo);
+    }
   }
 
   void _log(String message) {
@@ -73,10 +75,13 @@ class _DemoPageState extends State<DemoPage> {
       //    We create the collection WITHOUT an HNSW index first, insert data,
       //    then call optimize() which builds the index automatically.
       _log('Creating collection schema...');
-      final schema = CollectionSchema(name: 'demo', fields: [
-        VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
-        FieldSchema(name: 'title', dataType: DataType.string),
-      ]);
+      final schema = CollectionSchema(
+        name: 'demo',
+        fields: [
+          VectorSchema('embedding', 4, indexParams: HnswIndexParams()),
+          FieldSchema(name: 'title', dataType: DataType.string),
+        ],
+      );
 
       // 4. Create and open collection
       _log('Creating collection at: $dbPath');
@@ -107,8 +112,10 @@ class _DemoPageState extends State<DemoPage> {
 
       // 7. Get stats
       final stats = collection.stats;
-      _log('Collection stats: ${stats.docCount} docs, '
-          '${stats.indexCount} indexes');
+      _log(
+        'Collection stats: ${stats.docCount} docs, '
+        '${stats.indexCount} indexes',
+      );
       stats.destroy();
 
       // 8. Vector search

@@ -56,6 +56,42 @@ bash scripts/build_ios.sh SIMULATORARM64
 bash scripts/build_ios.sh SIMULATOR64
 ```
 
+## macOS
+
+| Item | Details |
+|------|---------|
+| **Minimum macOS version** | 10.15 |
+| **Supported architecture (CI)** | `arm64` |
+| **Native library** | `zvec.framework` dynamic framework |
+| **Loading mechanism** | `DynamicLibrary.open('zvec.framework/zvec')`, with app-bundle and `libzvec.dylib` fallbacks |
+| **install_name** | `@rpath/zvec.framework/zvec` |
+| **Distribution** | CocoaPods `prepare_command` downloads `zvec-framework-macos-arm64.zip` from GitHub Releases during `pod install` |
+| **Local build output** | `build/macos/libzvec.dylib`, `build/macos/zvec.framework/`, and `macos/zvec.framework/` |
+
+The macOS build follows upstream zvec desktop support by building the
+`zvec_c_api` shared target and packaging it as a framework for Flutter.
+
+## Linux
+
+| Item | Details |
+|------|---------|
+| **Supported architecture (CI)** | `x64` |
+| **Native library** | `libzvec.so` |
+| **Loading mechanism** | `DynamicLibrary.open('libzvec.so')` via `dart:ffi` |
+| **Distribution** | `linux/CMakeLists.txt` downloads `libzvec-linux-x64.zip` from GitHub Releases and exposes it through `zvec_bundled_libraries` |
+| **Local build output** | `build/linux/libzvec.so` and `linux/lib/libzvec.so` |
+
+## Windows
+
+| Item | Details |
+|------|---------|
+| **Supported architecture (CI)** | `x64` |
+| **Native library** | `zvec.dll` |
+| **Loading mechanism** | `DynamicLibrary.open('zvec.dll')` via `dart:ffi` |
+| **Distribution** | `windows/CMakeLists.txt` downloads `libzvec-windows-x64.zip` from GitHub Releases and exposes it through `zvec_bundled_libraries` |
+| **Local build output** | `build/windows/zvec.dll` and `windows/lib/zvec.dll` |
+| **Toolchain** | Visual Studio 2022 with MSVC and CMake |
+
 ## General Requirements
 
 | Item | Details |
@@ -64,7 +100,7 @@ bash scripts/build_ios.sh SIMULATOR64
 | **Flutter** | `>=3.3.0` |
 | **FFI dependency** | `ffi: ^2.1.3` |
 | **Plugin type** | FFI Plugin (`ffiPlugin: true`), no Method Channel |
-| **CI build environment** | macOS 14 (Apple Silicon), CMake 3.28 |
+| **CI build environment** | macOS 14 (Apple Silicon), Ubuntu latest, Windows 2022, CMake 3.28 |
 
 ## Native Library Loading
 
@@ -74,7 +110,7 @@ The native library is loaded at runtime in [`lib/src/zvec_library.dart`](lib/src
 |----------|-------------|
 | Android | `libzvec.so` |
 | iOS | `zvec.framework/zvec` |
-| macOS | `libzvec.dylib` |
+| macOS | `zvec.framework/zvec` (`libzvec.dylib` fallback for local tests) |
 | Linux | `libzvec.so` |
 | Windows | `zvec.dll` |
 
@@ -86,7 +122,10 @@ An environment variable `ZVEC_LIBRARY_PATH` can be set to override the library p
 |--------|---------|
 | `scripts/build_android.sh [ABI] [API_LEVEL] [BUILD_TYPE]` | Cross-compile `libzvec.so` for Android |
 | `scripts/build_ios.sh [PLATFORM] [BUILD_TYPE]` | Cross-compile `zvec.framework` for iOS |
-| `scripts/build_all.sh` | Build all platform variants |
+| `scripts/build_macos.sh [BUILD_TYPE]` | Build `zvec.framework` and `libzvec.dylib` for macOS |
+| `scripts/build_linux.sh [BUILD_TYPE]` | Build `libzvec.so` for Linux |
+| `scripts/build_windows.ps1 [-BuildType Release]` | Build `zvec.dll` for Windows |
+| `scripts/build_all.sh` | Build supported targets for the current host |
 
 ### Build Examples
 
@@ -105,6 +144,15 @@ bash scripts/build_ios.sh OS Debug
 
 # iOS Apple Silicon simulator
 bash scripts/build_ios.sh SIMULATORARM64
+
+# macOS desktop
+bash scripts/build_macos.sh
+
+# Linux desktop
+bash scripts/build_linux.sh
+
+# Windows desktop
+powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 ```
 
 ## Version Information
@@ -119,4 +167,6 @@ The plugin has two distinct version numbers:
 1. **Android arm64 only** — `armeabi-v7a` is disabled due to upstream CMake arch flag conflicts. Pending upstream fix.
 2. **No prebuilt iOS simulator framework** — CI only builds the device (`arm64`) variant. Simulator frameworks must be built locally.
 3. **No x86/x86_64 Android** — Not built for Android emulators or Chromebooks. Can be added if needed.
-4. **No macOS/Linux/Windows prebuilt binaries** — Desktop platforms are loadable in code but no prebuilt binaries are distributed. Must be built from source for desktop use.
+4. **macOS CI builds arm64 only** — Intel macOS can be built locally with `scripts/build_macos.sh` on an x86_64 Mac and published as `zvec-framework-macos-x64.zip` if needed.
+5. **Linux CI builds x64 only** — Linux arm64 is supported by the scripts and CMake naming, but no CI artifact is published yet.
+6. **Windows CI builds x64 only** — Windows arm64 is not currently built or distributed.
