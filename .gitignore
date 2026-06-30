@@ -49,6 +49,7 @@ android/src/main/jniLibs/
 ios/zvec.framework/
 linux/lib/
 macos/zvec.framework/
+macos/zvec_native.framework/
 windows/lib/
 
 tmp/*

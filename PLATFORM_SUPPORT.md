@@ -63,10 +63,10 @@ bash scripts/build_ios.sh SIMULATOR64
 | **Minimum macOS version** | 10.15 |
 | **Supported architecture (CI)** | `arm64` |
 | **Native library** | `zvec.framework` dynamic framework |
-| **Loading mechanism** | `DynamicLibrary.open('zvec.framework/zvec')`, with app-bundle and `libzvec.dylib` fallbacks |
-| **install_name** | `@rpath/zvec.framework/zvec` |
+| **Loading mechanism** | `DynamicLibrary.open('zvec_native.framework/zvec_native')`, with app-bundle, legacy `zvec.framework/zvec`, and `libzvec.dylib` fallbacks |
+| **install_name** | `@rpath/zvec_native.framework/zvec_native` |
 | **Distribution** | CocoaPods `prepare_command` downloads `zvec-framework-macos-arm64.zip` from GitHub Releases during `pod install` |
-| **Local build output** | `build/macos/libzvec.dylib`, `build/macos/zvec.framework/`, and `macos/zvec.framework/` |
+| **Local build output** | `build/macos/libzvec.dylib`, `build/macos/zvec_native.framework/`, and `macos/zvec_native.framework/` |
 
 The macOS build follows upstream zvec desktop support by building the
 `zvec_c_api` shared target and packaging it as a framework for Flutter.
@@ -110,7 +110,7 @@ The native library is loaded at runtime in [`lib/src/zvec_library.dart`](lib/src
 |----------|-------------|
 | Android | `libzvec.so` |
 | iOS | `zvec.framework/zvec` |
-| macOS | `zvec.framework/zvec` (`libzvec.dylib` fallback for local tests) |
+| macOS | `zvec_native.framework/zvec_native` (`zvec.framework/zvec` legacy and `libzvec.dylib` local-test fallbacks) |
 | Linux | `libzvec.so` |
 | Windows | `zvec.dll` |
 
@@ -122,7 +122,7 @@ An environment variable `ZVEC_LIBRARY_PATH` can be set to override the library p
 |--------|---------|
 | `scripts/build_android.sh [ABI] [API_LEVEL] [BUILD_TYPE]` | Cross-compile `libzvec.so` for Android |
 | `scripts/build_ios.sh [PLATFORM] [BUILD_TYPE]` | Cross-compile `zvec.framework` for iOS |
-| `scripts/build_macos.sh [BUILD_TYPE]` | Build `zvec.framework` and `libzvec.dylib` for macOS |
+| `scripts/build_macos.sh [BUILD_TYPE]` | Build `zvec_native.framework` and `libzvec.dylib` for macOS |
 | `scripts/build_linux.sh [BUILD_TYPE]` | Build `libzvec.so` for Linux |
 | `scripts/build_windows.ps1 [-BuildType Release]` | Build `zvec.dll` for Windows |
 | `scripts/build_all.sh` | Build supported targets for the current host |

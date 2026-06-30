@@ -48,7 +48,7 @@ bash scripts/build_android.sh arm64-v8a
 bash scripts/build_ios.sh OS               # device (arm64)
 bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon simulator (optional)
 
-# macOS desktop — output: macos/zvec.framework/
+# macOS desktop — output: macos/zvec_native.framework/
 bash scripts/build_macos.sh
 
 # Linux desktop — output: linux/lib/libzvec.so

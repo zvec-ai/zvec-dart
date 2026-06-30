@@ -147,7 +147,7 @@ jobs:
         run: bash scripts/build_macos.sh Release
 
       - name: Verify macOS native artifact
-        run: file macos/zvec.framework/zvec
+        run: file macos/zvec_native.framework/zvec_native
 
       - name: Run macOS native FFI tests
         env:

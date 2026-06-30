@@ -20,7 +20,7 @@ on macOS.
   s.dependency 'FlutterMacOS'
   s.platform = :osx, '10.15'
 
-  s.osx.vendored_frameworks = 'zvec.framework'
+  s.osx.vendored_frameworks = 'zvec_native.framework'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
@@ -41,21 +41,28 @@ on macOS.
       fi
     }
 
-    if [ ! -f "zvec.framework/zvec" ]; then
+    sign_framework() {
+      if command -v codesign >/dev/null 2>&1; then
+        codesign --force --sign - --timestamp=none zvec_native.framework
+      fi
+    }
+
+    if [ ! -f "zvec_native.framework/zvec_native" ]; then
       case "$arch" in
         arm64)
           artifact="zvec-framework-macos-arm64.zip"
           ;;
         x86_64)
-          if [ -f "../build/macos/zvec.framework/zvec" ]; then
-            echo "Using locally built zvec.framework from ../build/macos"
-            validate_framework_arch "../build/macos/zvec.framework/zvec"
-            rm -rf zvec.framework
-            cp -R ../build/macos/zvec.framework .
-            validate_framework_arch "zvec.framework/zvec"
+          if [ -f "../build/macos/zvec_native.framework/zvec_native" ]; then
+            echo "Using locally built zvec_native.framework from ../build/macos"
+            validate_framework_arch "../build/macos/zvec_native.framework/zvec_native"
+            rm -rf zvec_native.framework
+            cp -R ../build/macos/zvec_native.framework .
+            validate_framework_arch "zvec_native.framework/zvec_native"
+            sign_framework
             exit 0
           fi
-          echo "Prebuilt zvec.framework for Intel macOS is not published."
+          echo "Prebuilt zvec_native.framework for Intel macOS is not published."
           echo "Use a source checkout and build it locally with: bash scripts/build_macos.sh"
           exit 1
           ;;
@@ -65,24 +72,27 @@ on macOS.
           ;;
       esac
 
-      if [ -f "../build/macos/zvec.framework/zvec" ]; then
-        echo "Using locally built zvec.framework from ../build/macos"
-        validate_framework_arch "../build/macos/zvec.framework/zvec"
-        rm -rf zvec.framework
-        cp -R ../build/macos/zvec.framework .
-        validate_framework_arch "zvec.framework/zvec"
+      if [ -f "../build/macos/zvec_native.framework/zvec_native" ]; then
+        echo "Using locally built zvec_native.framework from ../build/macos"
+        validate_framework_arch "../build/macos/zvec_native.framework/zvec_native"
+        rm -rf zvec_native.framework
+        cp -R ../build/macos/zvec_native.framework .
+        validate_framework_arch "zvec_native.framework/zvec_native"
+        sign_framework
       else
-        echo "Downloading zvec.framework v#{zvec_version} ($arch) ..."
+        echo "Downloading zvec_native.framework v#{zvec_version} ($arch) ..."
         curl -L -o "$artifact" \
           "https://github.com/zvec-ai/zvec-dart/releases/download/v#{zvec_version}/$artifact"
         unzip -o "$artifact" -d .
         rm "$artifact"
-        validate_framework_arch "zvec.framework/zvec"
-        echo "Done: zvec.framework downloaded."
+        validate_framework_arch "zvec_native.framework/zvec_native"
+        sign_framework
+        echo "Done: zvec_native.framework downloaded."
       fi
     else
-      validate_framework_arch "zvec.framework/zvec"
-      echo "zvec.framework already exists, skipping download."
+      validate_framework_arch "zvec_native.framework/zvec_native"
+      sign_framework
+      echo "zvec_native.framework already exists, skipping download."
     fi
   CMD
 end

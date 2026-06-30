@@ -181,7 +181,7 @@ jobs:
 
       - name: Verify macOS artifacts
         run: |
-          file macos/zvec.framework/zvec
+          file macos/zvec_native.framework/zvec_native
           ls -lh build/release/
 
       - name: Upload macOS artifacts
@@ -616,34 +616,43 @@ jobs:
         working-directory: example
         run: flutter create --platforms=macos .
 
-      - name: Build macOS app
+      - name: Build macOS release app
         working-directory: example
-        run: flutter build macos --debug
+        run: flutter build macos --release --dart-define=ZVEC_RELEASE_SMOKE=true
 
-      - name: Verify zvec.framework
+      - name: Verify zvec_native.framework
         working-directory: example
         run: |
-          FRAMEWORK=$(find build/macos -name "zvec.framework" -type d | head -1)
-          if [ -z "$FRAMEWORK" ]; then
-            echo "::error::zvec.framework NOT found in macOS build output"
+          APP="build/macos/Build/Products/Release/zvec_example.app"
+          FRAMEWORK="$APP/Contents/Frameworks/zvec_native.framework"
+          BINARY="$FRAMEWORK/zvec_native"
+          if [ ! -d "$FRAMEWORK" ] || [ ! -s "$BINARY" ]; then
+            echo "::error::zvec_native.framework NOT found in macOS release app bundle"
             exit 1
           fi
-          lipo -info "$FRAMEWORK/zvec"
-          if ! lipo -info "$FRAMEWORK/zvec" | grep -q "arm64"; then
-            echo "::error::arm64 architecture NOT found in zvec.framework"
+          lipo -info "$BINARY"
+          if ! lipo -info "$BINARY" | grep -q "arm64"; then
+            echo "::error::arm64 architecture NOT found in zvec_native.framework"
             exit 1
           fi
 
-      - name: Run macOS runtime smoke test
+      - name: Verify packaged Jieba assets
         working-directory: example
         run: |
-          FRAMEWORK=$(find build/macos -name "zvec.framework" -type d | head -1)
-          if [ -z "$FRAMEWORK" ]; then
-            echo "::error::zvec.framework NOT found in macOS build output"
-            exit 1
-          fi
-          ZVEC_LIBRARY_PATH="$FRAMEWORK/zvec" \
-            flutter test test/release_runtime_smoke_test.dart
+          ASSETS="build/macos/Build/Products/Release/zvec_example.app/Contents/Frameworks/App.framework/Resources/flutter_assets/packages/zvec/assets/jieba_dict"
+          for file in jieba.dict.utf8 hmm_model.utf8; do
+            if [ ! -s "$ASSETS/$file" ]; then
+              echo "::error::Missing packaged Jieba asset in macOS release app: $file"
+              exit 1
+            fi
+            ls -lh "$ASSETS/$file"
+          done
+
+      - name: Run macOS release app smoke test
+        working-directory: example
+        run: |
+          unset ZVEC_LIBRARY_PATH
+          "build/macos/Build/Products/Release/zvec_example.app/Contents/MacOS/zvec_example"
 
   verify-linux:
     name: Verify Linux (desktop build)
@@ -661,7 +670,8 @@ jobs:
             cmake \
             libgtk-3-dev \
             ninja-build \
-            pkg-config
+            pkg-config \
+            xvfb
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -706,16 +716,17 @@ jobs:
         working-directory: example
         run: flutter create --platforms=linux .
 
-      - name: Build Linux app
+      - name: Build Linux release app
         working-directory: example
-        run: flutter build linux --debug
+        run: flutter build linux --release --dart-define=ZVEC_RELEASE_SMOKE=true
 
       - name: Verify libzvec.so
         working-directory: example
         run: |
-          LIB=$(find build/linux -name "libzvec.so" -type f | head -1)
-          if [ -z "$LIB" ]; then
-            echo "::error::libzvec.so NOT found in Linux build output"
+          BUNDLE="build/linux/x64/release/bundle"
+          LIB="$BUNDLE/lib/libzvec.so"
+          if [ ! -s "$LIB" ]; then
+            echo "::error::libzvec.so NOT found in Linux release bundle"
             exit 1
           fi
           file "$LIB"
@@ -728,16 +739,23 @@ jobs:
             exit 1
           fi
 
-      - name: Run Linux runtime smoke test
+      - name: Verify packaged Jieba assets
         working-directory: example
         run: |
-          LIB=$(find build/linux -name "libzvec.so" -type f | head -1)
-          if [ -z "$LIB" ]; then
-            echo "::error::libzvec.so NOT found in Linux build output"
-            exit 1
-          fi
-          ZVEC_LIBRARY_PATH="$LIB" \
-            flutter test test/release_runtime_smoke_test.dart
+          ASSETS="build/linux/x64/release/bundle/data/flutter_assets/packages/zvec/assets/jieba_dict"
+          for file in jieba.dict.utf8 hmm_model.utf8; do
+            if [ ! -s "$ASSETS/$file" ]; then
+              echo "::error::Missing packaged Jieba asset in Linux release bundle: $file"
+              exit 1
+            fi
+            ls -lh "$ASSETS/$file"
+          done
+
+      - name: Run Linux release app smoke test
+        working-directory: example
+        run: |
+          unset ZVEC_LIBRARY_PATH
+          xvfb-run -a build/linux/x64/release/bundle/zvec_example
 
   verify-windows:
     name: Verify Windows (desktop build)
@@ -787,30 +805,42 @@ jobs:
         working-directory: example
         run: flutter create --platforms=windows .
 
-      - name: Build Windows app
+      - name: Build Windows release app
         working-directory: example
-        run: flutter build windows --debug
+        run: flutter build windows --release --dart-define=ZVEC_RELEASE_SMOKE=true
 
       - name: Verify zvec.dll
         working-directory: example
         shell: powershell
         run: |
-          $dll = Get-ChildItem -Path build\windows -Filter zvec.dll -Recurse | Select-Object -First 1
-          if (-not $dll) {
-            throw "zvec.dll NOT found in Windows build output"
+          $bundle = "build\windows\x64\runner\Release"
+          $dll = Join-Path $bundle "zvec.dll"
+          if (-not (Test-Path $dll -PathType Leaf)) {
+            throw "zvec.dll NOT found in Windows release bundle"
           }
-          Get-Item $dll.FullName
+          Get-Item $dll
 
-      - name: Run Windows runtime smoke test
+      - name: Verify packaged Jieba assets
         working-directory: example
         shell: powershell
         run: |
-          $dll = Get-ChildItem -Path build\windows -Filter zvec.dll -Recurse | Select-Object -First 1
-          if (-not $dll) {
-            throw "zvec.dll NOT found in Windows build output"
+          $assets = "build\windows\x64\runner\Release\data\flutter_assets\packages\zvec\assets\jieba_dict"
+          foreach ($file in @("jieba.dict.utf8", "hmm_model.utf8")) {
+            $asset = Join-Path $assets $file
+            if (-not (Test-Path $asset -PathType Leaf) -or (Get-Item $asset).Length -le 0) {
+              throw "Missing packaged Jieba asset in Windows release bundle: $file"
+            }
+            Get-Item $asset
           }
-          $env:ZVEC_LIBRARY_PATH = $dll.FullName
-          flutter test test\release_runtime_smoke_test.dart
+
+      - name: Run Windows release app smoke test
+        working-directory: example
+        shell: powershell
+        run: |
+          if ($env:ZVEC_LIBRARY_PATH) {
+            Remove-Item Env:\ZVEC_LIBRARY_PATH
+          }
+          & "build\windows\x64\runner\Release\zvec_example.exe"
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
@@ -827,7 +857,7 @@ jobs:
           echo ""
           echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
           echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"
-          echo "  macOS:   desktop build downloads/bundles zvec.framework and runs FFI smoke test"
-          echo "  Linux:   desktop build downloads/bundles libzvec.so and runs FFI smoke test"
-          echo "  Windows: desktop build downloads/bundles zvec.dll and runs FFI smoke test"
+          echo "  macOS:   release app bundles zvec_native.framework/Jieba assets and runs FFI smoke test"
+          echo "  Linux:   release app bundles libzvec.so/Jieba assets and runs FFI smoke test"
+          echo "  Windows: release app bundles zvec.dll/Jieba assets and runs FFI smoke test"
           echo "============================================"

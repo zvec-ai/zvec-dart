@@ -14,8 +14,8 @@
 #
 # Output:
 #   build/macos/libzvec.dylib       — direct Dart/FFI test library
-#   build/macos/zvec.framework/     — Flutter macOS framework
-#   macos/zvec.framework/           — local CocoaPods cache
+#   build/macos/zvec_native.framework/ — Flutter macOS native framework
+#   macos/zvec_native.framework/       — local CocoaPods cache
 #   build/release/zvec-framework-macos-<arch>.zip
 #
 # Notes:
@@ -126,8 +126,8 @@ echo ""
 echo "[3/3] Packaging macOS artifacts ..."
 
 MACOS_OUTPUT_DIR="$PROJECT_ROOT/build/macos"
-FRAMEWORK_BUILD_DIR="$MACOS_OUTPUT_DIR/zvec.framework"
-FRAMEWORK_PLUGIN_DIR="$PROJECT_ROOT/macos/zvec.framework"
+FRAMEWORK_BUILD_DIR="$MACOS_OUTPUT_DIR/zvec_native.framework"
+FRAMEWORK_PLUGIN_DIR="$PROJECT_ROOT/macos/zvec_native.framework"
 mkdir -p "$MACOS_OUTPUT_DIR"
 
 # Find build artifact
@@ -146,8 +146,9 @@ cp "$DYLIB_FILE" "$MACOS_OUTPUT_DIR/libzvec.dylib"
 # Package a framework for Flutter macOS/CocoaPods builds.
 rm -rf "$FRAMEWORK_BUILD_DIR" "$FRAMEWORK_PLUGIN_DIR"
 mkdir -p "$FRAMEWORK_BUILD_DIR/Headers"
-cp "$DYLIB_FILE" "$FRAMEWORK_BUILD_DIR/zvec"
-install_name_tool -id @rpath/zvec.framework/zvec "$FRAMEWORK_BUILD_DIR/zvec"
+cp "$DYLIB_FILE" "$FRAMEWORK_BUILD_DIR/zvec_native"
+install_name_tool -id @rpath/zvec_native.framework/zvec_native \
+    "$FRAMEWORK_BUILD_DIR/zvec_native"
 
 GENERATED_HEADER="$MACOS_BUILD_DIR/src/generated/zvec/c_api.h"
 if [ -f "$GENERATED_HEADER" ]; then
@@ -165,13 +166,13 @@ cat > "$FRAMEWORK_BUILD_DIR/Info.plist" << EOF
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>zvec</string>
+    <string>zvec_native</string>
     <key>CFBundleIdentifier</key>
-    <string>com.alibaba.zvec</string>
+    <string>com.alibaba.zvec.native</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>zvec</string>
+    <string>zvec_native</string>
     <key>CFBundlePackageType</key>
     <string>FMWK</string>
     <key>CFBundleShortVersionString</key>
@@ -184,6 +185,10 @@ cat > "$FRAMEWORK_BUILD_DIR/Info.plist" << EOF
 </plist>
 EOF
 
+if command -v codesign >/dev/null 2>&1; then
+    codesign --force --sign - --timestamp=none "$FRAMEWORK_BUILD_DIR"
+fi
+
 cp -R "$FRAMEWORK_BUILD_DIR" "$FRAMEWORK_PLUGIN_DIR"
 
 echo "[3/3] Done"
@@ -192,8 +197,8 @@ echo ""
 echo "============================================"
 echo "  Build successful!"
 echo "  Output: build/macos/libzvec.dylib"
-echo "          build/macos/zvec.framework/zvec"
-echo "          macos/zvec.framework/zvec"
+echo "          build/macos/zvec_native.framework/zvec_native"
+echo "          macos/zvec_native.framework/zvec_native"
 echo "  Size:   $(du -h "$MACOS_OUTPUT_DIR/libzvec.dylib" | cut -f1)"
 echo "  Type:   $(file "$MACOS_OUTPUT_DIR/libzvec.dylib" | sed 's|.*: ||')"
 echo "============================================"
@@ -209,5 +214,5 @@ echo "    bash scripts/run_tests.sh"
 RELEASE_DIR="$PROJECT_ROOT/build/release"
 mkdir -p "$RELEASE_DIR"
 ZIP_NAME="zvec-framework-macos-${RELEASE_ARCH}.zip"
-cd "$MACOS_OUTPUT_DIR" && zip -r "$RELEASE_DIR/$ZIP_NAME" zvec.framework/
+cd "$MACOS_OUTPUT_DIR" && zip -r "$RELEASE_DIR/$ZIP_NAME" zvec_native.framework/
 echo "  Release zip: build/release/$ZIP_NAME"

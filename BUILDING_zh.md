@@ -48,7 +48,7 @@ bash scripts/build_android.sh arm64-v8a
 bash scripts/build_ios.sh OS               # 真机 (arm64)
 bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon 模拟器（可选）
 
-# 只编译 macOS 桌面端 —— 产物：macos/zvec.framework/
+# 只编译 macOS 桌面端 —— 产物：macos/zvec_native.framework/
 bash scripts/build_macos.sh
 
 # 只编译 Linux 桌面端 —— 产物：linux/lib/libzvec.so
