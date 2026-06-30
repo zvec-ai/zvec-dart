@@ -1,3 +1,11 @@
+## 0.5.2
+
+* Add Flutter desktop support for macOS, Linux, and Windows.
+* Add desktop native library download, bundling, and release artifact verification.
+* Add packaged desktop app smoke tests for native loading, vector queries, and bundled Jieba FTS assets.
+* Package the macOS desktop native library as `zvec_native.framework` to avoid framework name collisions.
+* Add a manual release dry-run workflow that verifies release artifacts without creating a GitHub Release or publishing to pub.dev.
+
 ## 0.5.1
 
 * Bump native zvec engine to v0.5.1.

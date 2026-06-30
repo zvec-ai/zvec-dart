@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.14)
 set(PROJECT_NAME "zvec")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
-set(ZVEC_VERSION "0.5.1")
+set(ZVEC_VERSION "0.5.2")
 set(ZVEC_GITHUB_BASE "https://github.com/zvec-ai/zvec-dart/releases/download/v${ZVEC_VERSION}")
 set(ZVEC_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(ZVEC_NATIVE_LIBRARY "${ZVEC_NATIVE_DIR}/zvec.dll")
