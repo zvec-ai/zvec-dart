@@ -5,6 +5,11 @@
 # libraries for all platforms, packages them as zip files, uploads
 # to GitHub Releases, and publishes the Dart package to pub.dev.
 #
+# A manual workflow_dispatch run is a safe dry run. It builds the same native
+# artifacts, validates the package with `dart pub publish --dry-run`, and
+# verifies example apps from local artifacts without creating a GitHub Release
+# or publishing to pub.dev.
+#
 # Prerequisites:
 #   - pubspec.yaml version matches the tag (e.g. tag v0.1.0 → version: 0.1.0)
 #   - CHANGELOG.md mentions the version
@@ -19,10 +24,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version/tag to dry-run verify, e.g. v0.6.0. Must match pubspec.yaml and native package versions."
+        required: true
+        type: string
 
 env:
   # Extract version from tag: v0.1.0 → 0.1.0
-  ZVEC_VERSION: ${{ github.ref_name }}
+  ZVEC_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 jobs:
   # =========================================================================
@@ -275,10 +286,56 @@ jobs:
           path: build/release/libzvec-windows-x64.zip
 
   # =========================================================================
+  # Manual package dry run — validates pub package contents without publishing
+  # =========================================================================
+  package-dry-run:
+    name: Package dry run (manual)
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Verify version consistency
+        run: |
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          TAG_VERSION="${ZVEC_VERSION#v}"
+          echo "pubspec.yaml version: $PUBSPEC_VERSION"
+          echo "Dry-run version:      $TAG_VERSION"
+          if [ "$PUBSPEC_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch! pubspec.yaml=$PUBSPEC_VERSION, dry-run=$TAG_VERSION"
+            exit 1
+          fi
+
+      - name: Prepare Jieba dictionary assets
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Remove submodule gitlink for pub validation
+        run: |
+          # Workaround for dart pub bug (dart-lang/pub#3789):
+          # pub incorrectly warns about submodule gitlink entries being gitignored.
+          git rm --cached third_party/zvec
+
+      - name: Dry run
+        run: dart pub publish --dry-run
+
+  # =========================================================================
   # Create GitHub Release — waits for all native builds to succeed
   # =========================================================================
   release:
     name: Create GitHub Release
+    if: ${{ github.event_name == 'push' }}
     needs: [build-android, build-ios, build-macos, build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
@@ -324,11 +381,11 @@ jobs:
   # =========================================================================
   # Publish to pub.dev — after GitHub Release is created
   #
-  # Uses OIDC trusted publishing (dart-lang/setup-dart) which requires
-  # the workflow to run on a 'push' or 'workflow_dispatch' event.
+  # Uses OIDC trusted publishing (dart-lang/setup-dart) on version tag pushes.
   # =========================================================================
   publish:
     name: Publish to pub.dev
+    if: ${{ github.event_name == 'push' }}
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
@@ -375,27 +432,77 @@ jobs:
         run: dart pub publish --force
 
   # =========================================================================
-  # Verify published package — install from pub.dev and build/test example app
+  # Gate release verification for either a real release or a manual dry run
+  # =========================================================================
+  release-gate:
+    name: Release verification gate
+    needs: [package-dry-run, publish]
+    if: ${{ always() && ((github.event_name == 'push' && needs['publish'].result == 'success') || (github.event_name == 'workflow_dispatch' && needs['package-dry-run'].result == 'success')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm verification mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dry-run release verification for ${ZVEC_VERSION}"
+            echo "No GitHub Release or pub.dev publish was performed."
+          else
+            echo "Published release ${ZVEC_VERSION}; starting post-publish verification."
+          fi
+
+  # =========================================================================
+  # Verify package install/build/test behavior
   #
-  # Waits for pub.dev indexing, then verifies:
+  # On tag pushes, waits for pub.dev indexing and verifies the published package.
+  # On manual dry runs, installs this workflow's native artifacts into the local
+  # package checkout and verifies the example app via its path dependency.
+  #
+  # Verifies:
   #   - Android APK bundles native library and Jieba assets
   #   - iOS app bundles zvec.framework and Jieba assets
   #   - Desktop apps bundle the release native artifact and can execute FFI calls
   # =========================================================================
   verify-android:
     name: Verify Android (APK static check)
-    needs: [publish]
+    needs: [build-android, release-gate]
+    if: ${{ always() && needs['build-android'].result == 'success' && needs['release-gate'].result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (for example app)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      - name: Prepare local package assets
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Download Android release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: android-arm64-v8a
+          path: /tmp/zvec-artifacts
+
+      - name: Install Android release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          mkdir -p android/src/main/jniLibs/arm64-v8a
+          unzip -o /tmp/zvec-artifacts/libzvec-android-arm64-v8a.zip \
+            -d android/src/main/jniLibs/arm64-v8a
+          file android/src/main/jniLibs/arm64-v8a/libzvec.so
+
+      - name: Resolve local example dependency
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: example
+        run: flutter pub get
+
       - name: Switch example to pub.dev dependency
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
@@ -416,6 +523,7 @@ jobs:
           grep -A2 'zvec:' pubspec.yaml
 
       - name: Wait for pub.dev indexing and resolve
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           for i in 1 2 3 4 5 6; do
@@ -473,18 +581,45 @@ jobs:
 
   verify-ios:
     name: Verify iOS (device build, no codesign)
-    needs: [publish]
+    needs: [build-ios, release-gate]
+    if: ${{ always() && needs['build-ios'].result == 'success' && needs['release-gate'].result == 'success' }}
     runs-on: macos-14
     steps:
       - name: Checkout (for example app)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      - name: Prepare local package assets
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Download iOS release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-libs
+          path: /tmp/zvec-artifacts
+
+      - name: Install iOS release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          rm -rf ios/zvec.framework
+          unzip -o /tmp/zvec-artifacts/zvec-framework-ios.zip -d ios
+          file ios/zvec.framework/zvec
+
+      - name: Resolve local example dependency
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: example
+        run: flutter pub get
+
       - name: Switch example to pub.dev dependency
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
@@ -505,6 +640,7 @@ jobs:
           grep -A2 'zvec:' pubspec.yaml
 
       - name: Wait for pub.dev indexing and resolve
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           for i in 1 2 3 4 5 6; do
@@ -567,18 +703,45 @@ jobs:
 
   verify-macos:
     name: Verify macOS (desktop build)
-    needs: [publish]
+    needs: [build-macos, release-gate]
+    if: ${{ always() && needs['build-macos'].result == 'success' && needs['release-gate'].result == 'success' }}
     runs-on: macos-14
     steps:
       - name: Checkout (for example app)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      - name: Prepare local package assets
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Download macOS release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-libs
+          path: /tmp/zvec-artifacts
+
+      - name: Install macOS release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          rm -rf macos/zvec_native.framework
+          unzip -o /tmp/zvec-artifacts/zvec-framework-macos-arm64.zip -d macos
+          file macos/zvec_native.framework/zvec_native
+
+      - name: Resolve local example dependency
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: example
+        run: flutter pub get
+
       - name: Switch example to pub.dev dependency
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
@@ -598,6 +761,7 @@ jobs:
           grep -A2 'zvec:' pubspec.yaml
 
       - name: Wait for pub.dev indexing and resolve
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           for i in 1 2 3 4 5 6; do
@@ -656,11 +820,14 @@ jobs:
 
   verify-linux:
     name: Verify Linux (desktop build)
-    needs: [publish]
+    needs: [build-linux, release-gate]
+    if: ${{ always() && needs['build-linux'].result == 'success' && needs['release-gate'].result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (for example app)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install system dependencies
         run: |
@@ -671,6 +838,7 @@ jobs:
             libgtk-3-dev \
             ninja-build \
             pkg-config \
+            unzip \
             xvfb
 
       - name: Setup Flutter
@@ -678,7 +846,31 @@ jobs:
         with:
           channel: stable
 
+      - name: Prepare local package assets
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Download Linux release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-libs
+          path: /tmp/zvec-artifacts
+
+      - name: Install Linux release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          mkdir -p linux/lib
+          unzip -o /tmp/zvec-artifacts/libzvec-linux-x64.zip -d linux/lib
+          file linux/lib/libzvec.so
+
+      - name: Resolve local example dependency
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: example
+        run: flutter pub get
+
       - name: Switch example to pub.dev dependency
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           TAG_VERSION="${ZVEC_VERSION#v}"
@@ -698,6 +890,7 @@ jobs:
           grep -A2 'zvec:' pubspec.yaml
 
       - name: Wait for pub.dev indexing and resolve
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         run: |
           for i in 1 2 3 4 5 6; do
@@ -759,18 +952,49 @@ jobs:
 
   verify-windows:
     name: Verify Windows (desktop build)
-    needs: [publish]
+    needs: [build-windows, release-gate]
+    if: ${{ always() && needs['build-windows'].result == 'success' && needs['release-gate'].result == 'success' }}
     runs-on: windows-2022
     steps:
       - name: Checkout (for example app)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      - name: Prepare local package assets
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: bash scripts/prepare_jieba_assets.sh
+
+      - name: Download Windows release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-libs
+          path: zvec-artifacts
+
+      - name: Install Windows release artifact
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "windows\lib" | Out-Null
+          Expand-Archive -Path "zvec-artifacts\libzvec-windows-x64.zip" `
+            -DestinationPath "windows\lib" `
+            -Force
+          Get-Item "windows\lib\zvec.dll"
+
+      - name: Resolve local example dependency
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        working-directory: example
+        run: flutter pub get
+
       - name: Switch example to pub.dev dependency
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         shell: powershell
         run: |
@@ -786,6 +1010,7 @@ jobs:
           Select-String -Path $pubspec -Pattern "zvec:" -Context 0,2
 
       - name: Wait for pub.dev indexing and resolve
+        if: ${{ github.event_name == 'push' }}
         working-directory: example
         shell: powershell
         run: |
@@ -853,7 +1078,11 @@ jobs:
       - name: All checks passed
         run: |
           echo "============================================"
-          echo "  Package ${ZVEC_VERSION} fully verified!"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "  Package ${ZVEC_VERSION} dry-run verified from local workflow artifacts!"
+          else
+            echo "  Package ${ZVEC_VERSION} fully verified after publishing!"
+          fi
           echo ""
           echo "  Android: APK contains arm64-v8a libzvec.so and Jieba assets"
           echo "  iOS:     zvec.framework present with arm64 architecture and Jieba assets"

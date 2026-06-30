@@ -73,7 +73,17 @@ flutter run -d <device-id>          # Android、iOS、macOS、Linux 或 Windows
 (cd ios && pod install)
 ```
 
-## 6. 重新生成 FFI 绑定（上游 C API 变动时）
+## 6. 不发布地验证 release
+
+推送版本 tag 之前，先从 GitHub Actions 手动运行 dry-run release workflow。它会构建所有 release 原生产物，执行 `dart pub publish --dry-run`，用这些产物构建 example app，并运行桌面端 release smoke test，但不会创建 GitHub Release，也不会发布到 pub.dev。
+
+```bash
+gh workflow run 1-build-and-release.yml --ref main -f version=v0.6.0
+```
+
+`version` 必须和 `pubspec.yaml` 以及各平台 package version 文件一致。
+
+## 7. 重新生成 FFI 绑定（上游 C API 变动时）
 
 ```bash
 dart run ffigen

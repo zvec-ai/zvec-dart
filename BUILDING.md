@@ -73,7 +73,21 @@ flutter run -d <device-id>          # Android, iOS, macOS, Linux, or Windows
 (cd ios && pod install)
 ```
 
-## 6. Regenerate FFI bindings (when the upstream C API changes)
+## 6. Verify a release without publishing
+
+Before pushing a version tag, run the manual dry-run release workflow from
+GitHub Actions. It builds all release native artifacts, runs `dart pub publish
+--dry-run`, builds the example apps from those artifacts, and runs desktop
+release smoke tests without creating a GitHub Release or publishing to pub.dev.
+
+```bash
+gh workflow run 1-build-and-release.yml --ref main -f version=v0.6.0
+```
+
+The `version` value must match `pubspec.yaml` and the platform package version
+files.
+
+## 7. Regenerate FFI bindings (when the upstream C API changes)
 
 ```bash
 dart run ffigen
