@@ -1,7 +1,8 @@
 # =============================================================================
 # Test Workflow — Run Dart unit tests on every push to main
 #
-# Runs pure-Dart tests, native FFI tests, and pub package/consumer smoke tests.
+# Runs pure-Dart tests, native FFI tests, desktop native/app smoke tests, and
+# pub package/consumer smoke tests.
 # =============================================================================
 name: "Test"
 
@@ -111,6 +112,166 @@ jobs:
 
       - name: Verify Android artifact
         run: file android/src/main/jniLibs/arm64-v8a/libzvec.so
+
+  # =========================================================================
+  # Desktop native FFI tests + Flutter app build smoke tests
+  # =========================================================================
+  desktop-macos-build:
+    name: Desktop macOS build
+    runs-on: macos-14
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS native library
+        run: bash scripts/build_macos.sh Release
+
+      - name: Verify macOS native artifact
+        run: file macos/zvec_native.framework/zvec_native
+
+      - name: Run macOS native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
+        run: flutter test test/zvec_native_test.dart
+
+      - name: Generate macOS example platform files
+        working-directory: example
+        run: flutter create --platforms=macos .
+
+      - name: Build macOS example app
+        working-directory: example
+        run: flutter build macos --debug
+
+  desktop-linux-build:
+    name: Desktop Linux build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            cmake \
+            libaio-dev \
+            libgtk-3-dev \
+            ninja-build \
+            pkg-config \
+            zip
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux native library
+        run: bash scripts/build_linux.sh Release
+
+      - name: Verify Linux native artifact
+        run: file linux/lib/libzvec.so
+
+      - name: Run Linux native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/linux/libzvec.so
+        run: flutter test test/zvec_native_test.dart
+
+      - name: Generate Linux example platform files
+        working-directory: example
+        run: flutter create --platforms=linux .
+
+      - name: Build Linux example app
+        working-directory: example
+        run: flutter build linux --debug
+
+  desktop-windows-build:
+    name: Desktop Windows build
+    runs-on: windows-2022
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch submodule tags
+        run: cd third_party/zvec && git fetch --tags
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28'
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows native library
+        shell: powershell
+        run: .\scripts\build_windows.ps1 -BuildType Release
+
+      - name: Verify Windows native artifact
+        shell: powershell
+        run: Get-Item windows\lib\zvec.dll
+
+      - name: Run Windows native FFI tests
+        env:
+          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/windows/zvec.dll
+        run: flutter test test/zvec_native_test.dart
+
+      - name: Generate Windows example platform files
+        working-directory: example
+        run: flutter create --platforms=windows .
+
+      - name: Build Windows example app
+        working-directory: example
+        run: flutter build windows --debug
 
   # =========================================================================
   # Package dry-run and example integration test

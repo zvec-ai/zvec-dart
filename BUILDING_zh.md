@@ -13,8 +13,9 @@
 | Android SDK  | API 21+     | Android Studio → SDK Manager                            |
 | Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
 | CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |
-| Xcode        | ≥ 15.0      | Mac App Store（仅 iOS 需要）                             |
+| Xcode        | ≥ 15.0      | Mac App Store（仅 iOS/macOS 需要）                        |
 | CocoaPods    | ≥ 1.15      | `sudo gem install cocoapods`                            |
+| Visual Studio| 2022+       | Windows 桌面端构建需要                                   |
 
 ## 1. 克隆仓库（含子模块）
 
@@ -37,7 +38,7 @@ flutter pub get
 ## 3. 编译原生库
 
 ```bash
-# 一键编译所有平台
+# 一键编译当前宿主可构建的目标
 bash scripts/build_all.sh
 
 # 只编译 Android —— 产物：android/src/main/jniLibs/<abi>/libzvec.so
@@ -46,6 +47,15 @@ bash scripts/build_android.sh arm64-v8a
 # 只编译 iOS —— 产物：ios/zvec.framework/
 bash scripts/build_ios.sh OS               # 真机 (arm64)
 bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon 模拟器（可选）
+
+# 只编译 macOS 桌面端 —— 产物：macos/zvec_native.framework/
+bash scripts/build_macos.sh
+
+# 只编译 Linux 桌面端 —— 产物：linux/lib/libzvec.so
+bash scripts/build_linux.sh
+
+# 只编译 Windows 桌面端 —— 产物：windows/lib/zvec.dll
+powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 ```
 
 ## 4. 运行测试
@@ -58,7 +68,7 @@ flutter test test/zvec_test.dart
 
 ```bash
 cd example
-flutter run -d <device-id>          # Android 或 iOS
+flutter run -d <device-id>          # Android、iOS、macOS、Linux 或 Windows
 # iOS 首次运行：
 (cd ios && pod install)
 ```

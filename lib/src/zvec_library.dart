@@ -26,6 +26,8 @@ import 'zvec_bindings.dart';
 /// - Android: loads `libzvec.so` via [DynamicLibrary.open]
 /// - iOS: loads embedded dynamic framework via
 ///   [DynamicLibrary.open] (`zvec.framework/zvec`)
+/// - Desktop: loads the Flutter-bundled native library, with a fallback for
+///   locally built test binaries.
 class ZvecLibrary {
   ZvecLibrary._();
 
@@ -80,6 +82,9 @@ class ZvecLibrary {
   static Iterable<Directory> _candidateJiebaDictDirs(String packageRoot) sync* {
     yield Directory(_join(packageRoot, 'assets/jieba_dict'));
     yield Directory(
+      _joinAll([packageRoot, 'packages', 'zvec', 'assets', 'jieba_dict']),
+    );
+    yield Directory(
       _join(
         packageRoot,
         'third_party/zvec/thirdparty/cppjieba/cppjieba-5.6.7/dict',
@@ -89,6 +94,7 @@ class ZvecLibrary {
 
   static Iterable<Directory> _candidatePackageRoots() sync* {
     yield* _ancestors(Directory.current);
+    yield* _candidateFlutterAssetRoots();
 
     final packageConfigStarts = <Directory>[Directory.current];
     if (Platform.script.scheme == 'file') {
@@ -100,6 +106,40 @@ class ZvecLibrary {
     for (final start in packageConfigStarts) {
       final root = _findPackageRootFromPackageConfig(start);
       if (root != null) yield root;
+    }
+  }
+
+  static Iterable<Directory> _candidateFlutterAssetRoots() sync* {
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+
+    if (Platform.isMacOS) {
+      yield Directory(
+        _joinAll([
+          executableDir,
+          '..',
+          'Frameworks',
+          'App.framework',
+          'Resources',
+          'flutter_assets',
+        ]),
+      );
+      yield Directory(
+        _joinAll([
+          executableDir,
+          '..',
+          'Frameworks',
+          'App.framework',
+          'Versions',
+          'A',
+          'Resources',
+          'flutter_assets',
+        ]),
+      );
+      yield Directory(
+        _joinAll([executableDir, '..', 'Resources', 'flutter_assets']),
+      );
+    } else if (Platform.isLinux || Platform.isWindows) {
+      yield Directory(_joinAll([executableDir, 'data', 'flutter_assets']));
     }
   }
 
@@ -164,6 +204,11 @@ class ZvecLibrary {
     return '$parent${Platform.pathSeparator}$child';
   }
 
+  static String _joinAll(List<String> parts) {
+    if (parts.isEmpty) return '';
+    return parts.skip(1).fold(parts.first, _join);
+  }
+
   static DynamicLibrary _openLibrary() {
     // Allow overriding the library path via environment variable.
     // This is needed for host-platform testing where DYLD_LIBRARY_PATH
@@ -178,20 +223,57 @@ class ZvecLibrary {
     if (Platform.isIOS) {
       // zvec is packaged as an embedded dynamic framework.
       // CocoaPods places it in the app's Frameworks/ directory.
-      return DynamicLibrary.open('zvec.framework/zvec');
+      return _openFirst(['zvec.framework/zvec']);
     }
-    // For testing on host platforms (macOS/Linux/Windows)
     if (Platform.isMacOS) {
-      return DynamicLibrary.open('libzvec.dylib');
+      return _openFirst([
+        'zvec_native.framework/zvec_native',
+        _appFrameworkPath('zvec_native.framework/zvec_native'),
+        'zvec.framework/zvec',
+        _appFrameworkPath('zvec.framework/zvec'),
+        'libzvec.dylib',
+      ]);
     }
     if (Platform.isLinux) {
-      return DynamicLibrary.open('libzvec.so');
+      return _openFirst(['libzvec.so', _executableSiblingPath('libzvec.so')]);
     }
     if (Platform.isWindows) {
-      return DynamicLibrary.open('zvec.dll');
+      return _openFirst(['zvec.dll', _executableSiblingPath('zvec.dll')]);
     }
     throw UnsupportedError(
       'Zvec is not supported on ${Platform.operatingSystem}',
     );
+  }
+
+  static DynamicLibrary _openFirst(List<String> candidates) {
+    final errors = <String>[];
+    for (final candidate in candidates) {
+      try {
+        return DynamicLibrary.open(candidate);
+      } on ArgumentError catch (error) {
+        errors.add('$candidate: $error');
+      } on OSError catch (error) {
+        errors.add('$candidate: $error');
+      }
+    }
+
+    throw UnsupportedError(
+      'Unable to load Zvec native library on ${Platform.operatingSystem}. '
+      'Tried: ${candidates.join(', ')}. '
+      'Set ZVEC_LIBRARY_PATH to an absolute native library path to override. '
+      'Errors: ${errors.join(' | ')}',
+    );
+  }
+
+  static String _appFrameworkPath(String relativeFrameworkPath) {
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    return _join(
+      _join(executableDir, '..'),
+      'Frameworks/$relativeFrameworkPath',
+    );
+  }
+
+  static String _executableSiblingPath(String libraryName) {
+    return _join(File(Platform.resolvedExecutable).parent.path, libraryName);
   }
 }

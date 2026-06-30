@@ -18,18 +18,18 @@
   <a href="https://github.com/zvec-ai/zvec-dart/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Flutter-%E2%89%A53.3.0-02569B?logo=flutter&logoColor=white" alt="Flutter"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.11.3-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-3DDC84" alt="Platforms"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows-3DDC84" alt="Platforms"/></a>
   <a href="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml"><img src="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml/badge.svg?branch=main" alt="Test"/></a>
 </p>
 
 ---
 
-**Zvec Dart SDK** brings Alibaba's open-source [Zvec](https://github.com/alibaba/zvec) vector engine to mobile via `dart:ffi` — no servers, no IPC, just a single dynamic library running in your app's process. Build on-device semantic search, RAG, recommendation, and similarity workloads with milliseconds-level latency.
+**Zvec Dart SDK** brings Alibaba's open-source [Zvec](https://github.com/alibaba/zvec) vector engine to Flutter and Dart via `dart:ffi` — no servers, no IPC, just a single dynamic library running in your app's process. Build on-device and desktop semantic search, RAG, recommendation, and similarity workloads with milliseconds-level latency.
 
 ## 💫 Features
 
 - **🚀 Native speed** — Direct FFI calls into a battle-tested C++ engine; no method-channel hops, no isolate marshalling.
-- **📱 Mobile-first** — Ships prebuilt binaries for **Android** (`arm64-v8a`) and **iOS** (`arm64`).
+- **📱 Mobile + desktop** — Ships prebuilt binaries for **Android**, **iOS**, **macOS**, **Linux**, and **Windows**.
 - **☁️ Zero-friction install** — Native libs are auto-fetched from GitHub Releases at build time. Your `pub.dev` package stays slim.
 - **🧠 Rich vector ops** — HNSW / IVF / Flat / Inverted indexes, hybrid filters, top-k & group-by queries.
 - **🔒 Durable storage** — Write-ahead log, atomic flush, persistent across app restarts.
@@ -52,8 +52,11 @@ dependencies:
 >
 > | Platform | Architectures      | Distribution                                 |
 > | -------- | ------------------ | -------------------------------------------- |
-> | Android  | arm64-v8a              | Gradle task `downloadZvecNativeLibs`     |
+> | Android  | arm64-v8a          | Gradle task `downloadZvecNativeLibs`          |
 > | iOS      | arm64 (device)     | CocoaPods `prepare_command` (curl + unzip)   |
+> | macOS    | arm64              | CocoaPods `prepare_command` (curl + unzip)   |
+> | Linux    | x64                | Flutter desktop CMake download + bundle      |
+> | Windows  | x64                | Flutter desktop CMake download + bundle      |
 
 ## ⚡ Quick Start
 
@@ -118,6 +121,9 @@ Native libraries are **NOT bundled in the pub.dev tarball** — they're fetched 
 | -------- | --------- | ------- |
 | Android  | Gradle task `downloadZvecNativeLibs` (`android/build.gradle`) | `flutter build apk` / `flutter run` |
 | iOS      | `prepare_command` in `ios/zvec.podspec` (curl + unzip)        | `pod install` |
+| macOS    | `prepare_command` in `macos/zvec.podspec` (curl + unzip)      | `pod install` |
+| Linux    | `linux/CMakeLists.txt` downloads and bundles `libzvec.so`      | `flutter build linux` / `flutter run -d linux` |
+| Windows  | `windows/CMakeLists.txt` downloads and bundles `zvec.dll`      | `flutter build windows` / `flutter run -d windows` |
 
 This keeps the Dart package small and lets us version native binaries independently.
 

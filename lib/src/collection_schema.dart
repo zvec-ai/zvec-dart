@@ -118,14 +118,9 @@ class VectorSchema extends FieldSchema {
   VectorSchema(
     String name,
     int dimension, {
-    DataType dataType = DataType.vectorFp32,
+    super.dataType = DataType.vectorFp32,
     IndexParams? indexParams,
-  }) : super(
-         name: name,
-         dataType: dataType,
-         nullable: false,
-         dimension: dimension,
-       ) {
+  }) : super(name: name, nullable: false, dimension: dimension) {
     if (indexParams != null) {
       setIndexParams(indexParams);
     }

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// FFI-dependent unit tests for the Zvec Dart SDK.
-///
-/// These tests require the native library (libzvec.dylib on macOS).
-/// Run with:
-///   bash scripts/run_tests.sh test/zvec_native_test.dart
+// FFI-dependent unit tests for the Zvec Dart SDK.
+//
+// These tests require the native library (libzvec.dylib on macOS).
+// Run with:
+//   bash scripts/run_tests.sh test/zvec_native_test.dart
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';

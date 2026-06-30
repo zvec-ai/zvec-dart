@@ -33,7 +33,7 @@
 ///   Zvec.shutdown();
 /// }
 /// ```
-library zvec;
+library;
 
 export 'src/collection.dart';
 export 'src/collection_options.dart';

@@ -18,18 +18,18 @@
   <a href="https://github.com/zvec-ai/zvec-dart/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Flutter-%E2%89%A53.3.0-02569B?logo=flutter&logoColor=white" alt="Flutter"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.11.3-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-3DDC84" alt="Platforms"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows-3DDC84" alt="Platforms"/></a>
   <a href="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml"><img src="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml/badge.svg?branch=main" alt="Test"/></a>
 </p>
 
 ---
 
-**Zvec Dart SDK** 通过 `dart:ffi` 把阿里巴巴开源的 [Zvec](https://github.com/alibaba/zvec) 向量引擎搬到了移动端 —— 没有服务、没有 IPC，只有一个动态库直接跑在你 App 的进程里。让端侧的语义检索、RAG、推荐、相似度计算等能力都拥有毫秒级延迟。
+**Zvec Dart SDK** 通过 `dart:ffi` 把阿里巴巴开源的 [Zvec](https://github.com/alibaba/zvec) 向量引擎带到 Flutter 与 Dart —— 没有服务、没有 IPC，只有一个动态库直接跑在你 App 的进程里。让端侧与桌面端的语义检索、RAG、推荐、相似度计算等能力都拥有毫秒级延迟。
 
 ## 💫 特性
 
 - **🚀 原生级速度** — 直连久经考验的 C++ 引擎，无 method channel、无 isolate 序列化开销。
-- **📱 移动优先** — 提供 **Android** (`arm64-v8a`) 与 **iOS** (`arm64`) 预编译产物。
+- **📱 移动端 + 桌面端** — 提供 **Android**、**iOS**、**macOS**、**Linux** 与 **Windows** 预编译产物。
 - **☁️ 安装零摩擦** — 原生库在构建时自动从 GitHub Releases 拉取，pub.dev 包体积保持精简。
 - **🧠 丰富的向量能力** — HNSW / IVF / Flat / 倒排索引，支持混合过滤、Top-K 与 Group-By 查询。
 - **🔒 持久化存储** — WAL 写前日志 + 原子刷盘，App 重启后数据依旧在。
@@ -45,7 +45,7 @@ flutter pub add zvec
 
 ```yaml
 dependencies:
-  zvec: ^0.4.0
+  zvec: ^0.5.1
 ```
 
 > **平台支持**
@@ -54,6 +54,9 @@ dependencies:
 > | ------- | ----------------------- | ------------------------------------------- |
 > | Android | arm64-v8a                | Gradle 任务 `downloadZvecNativeLibs`        |
 > | iOS     | arm64（真机）            | CocoaPods `prepare_command`（curl + unzip） |
+> | macOS   | arm64                   | CocoaPods `prepare_command`（curl + unzip） |
+> | Linux   | x64                     | Flutter desktop CMake 下载并打包            |
+> | Windows | x64                     | Flutter desktop CMake 下载并打包            |
 
 ## ⚡ 快速开始
 
@@ -118,6 +121,9 @@ void main() {
 | ------- | ------------------------------------------------------------- | -------------------------------- |
 | Android | `android/build.gradle` 中的 Gradle 任务 `downloadZvecNativeLibs` | `flutter build apk` / `flutter run` |
 | iOS     | `ios/zvec.podspec` 中的 `prepare_command`（curl + unzip）        | `pod install`                     |
+| macOS   | `macos/zvec.podspec` 中的 `prepare_command`（curl + unzip）      | `pod install`                     |
+| Linux   | `linux/CMakeLists.txt` 下载并打包 `libzvec.so`                   | `flutter build linux` / `flutter run -d linux` |
+| Windows | `windows/CMakeLists.txt` 下载并打包 `zvec.dll`                   | `flutter build windows` / `flutter run -d windows` |
 
 这样既能让 Dart 包保持精简，也允许原生二进制独立版本演进。
 

@@ -23,6 +23,10 @@ assets/jieba_dict/.gitkeep
 # Prebuilt native libraries (downloaded at build time, not shipped in package)
 android/src/main/jniLibs/
 ios/zvec.framework/
+linux/lib/
+macos/zvec.framework/
+macos/zvec_native.framework/
+windows/lib/
 
 # Dev files
 .git/
