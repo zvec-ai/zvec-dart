@@ -9,7 +9,7 @@
 | 工具         | 最低版本    | 安装方式                                                |
 | ------------ | ----------- | ------------------------------------------------------- |
 | Flutter      | ≥ 3.3.0     | <https://docs.flutter.dev/get-started/install>          |
-| Dart SDK     | ≥ 3.11.3    | 随 Flutter 自带                                          |
+| Dart SDK     | ≥ 3.4.4     | 随 Flutter 自带                                          |
 | Android SDK  | API 21+     | Android Studio → SDK Manager                            |
 | Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
 | CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |

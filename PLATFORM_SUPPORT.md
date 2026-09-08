@@ -96,7 +96,7 @@ The macOS build follows upstream zvec desktop support by building the
 
 | Item | Details |
 |------|---------|
-| **Dart SDK** | `^3.11.3` |
+| **Dart SDK** | `>=3.4.4 <4.0.0` |
 | **Flutter** | `>=3.3.0` |
 | **FFI dependency** | `ffi: ^2.1.3` |
 | **Plugin type** | FFI Plugin (`ffiPlugin: true`), no Method Channel |

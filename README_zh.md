@@ -17,7 +17,7 @@
   <a href="https://pub.dev/packages/zvec"><img src="https://img.shields.io/pub/v/zvec.svg?label=pub.dev&logo=dart" alt="pub.dev"/></a>
   <a href="https://github.com/zvec-ai/zvec-dart/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"/></a>
   <a href="#"><img src="https://img.shields.io/badge/Flutter-%E2%89%A53.3.0-02569B?logo=flutter&logoColor=white" alt="Flutter"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.11.3-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Dart-%E2%89%A53.4.4-0175C2?logo=dart&logoColor=white" alt="Dart"/></a>
   <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows-3DDC84" alt="Platforms"/></a>
   <a href="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml"><img src="https://github.com/zvec-ai/zvec-dart/actions/workflows/2-test.yml/badge.svg?branch=main" alt="Test"/></a>
 </p>

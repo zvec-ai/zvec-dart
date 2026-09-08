@@ -39,6 +39,35 @@ jobs:
         run: flutter test test/zvec_test.dart
 
   # =========================================================================
+  # Minimum SDK compatibility (keeps the advertised Dart/Flutter floor tested)
+  # =========================================================================
+  sdk-compatibility:
+    name: Flutter 3.22.3 compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter 3.22.3
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.3'
+
+      - name: Install root dependencies
+        run: flutter pub get
+
+      - name: Analyze root package
+        run: flutter analyze --no-fatal-infos
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Analyze example package
+        working-directory: example
+        run: flutter analyze --no-fatal-infos
+
+  # =========================================================================
   # Native FFI tests (requires building libzvec.dylib on macOS)
   # =========================================================================
   native-tests:

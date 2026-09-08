@@ -9,7 +9,7 @@
 | Tool         | Min Version | Where                                                   |
 | ------------ | ----------- | ------------------------------------------------------- |
 | Flutter      | ≥ 3.3.0     | <https://docs.flutter.dev/get-started/install>          |
-| Dart SDK     | ≥ 3.11.3    | bundled with Flutter                                    |
+| Dart SDK     | ≥ 3.4.4     | bundled with Flutter                                    |
 | Android SDK  | API 21+     | Android Studio → SDK Manager                            |
 | Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
 | CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |
