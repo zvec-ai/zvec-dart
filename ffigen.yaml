@@ -1,4 +1,4 @@
-# Run with `dart run ffigen --config ffigen.yaml`.
+# Run `dart tool/fetch_zvec.dart --headers`, then `dart run ffigen --config ffigen.yaml`.
 name: ZvecBindings
 description: |
   Auto-generated FFI bindings for the Zvec C API.
@@ -7,9 +7,9 @@ description: |
 output: 'lib/src/zvec_bindings.dart'
 headers:
   entry-points:
-    - 'third_party/zvec/src/include/zvec/c_api.h'
+    - 'build/zvec-sdk/headers/zvec/c_api.h'
   include-directives:
-    - 'third_party/zvec/src/include/zvec/c_api.h'
+    - 'build/zvec-sdk/headers/zvec/c_api.h'
 comments:
   style: any
   length: full

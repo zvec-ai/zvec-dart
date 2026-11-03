@@ -35,7 +35,10 @@ android {
         applicationId = "com.example.zvec_example"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 28
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInt()
         versionName = flutterVersionName

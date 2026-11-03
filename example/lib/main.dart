@@ -21,6 +21,10 @@ Future<void> _runReleaseSmoke() async {
 
   try {
     stdout.writeln('Starting zvec release smoke test');
+    _checkSmoke(
+      Zvec.versionMajor == 0 && Zvec.versionMinor == 8 && Zvec.versionPatch == 0,
+      'Expected zvec 0.8.0, loaded ${Zvec.version}',
+    );
     Zvec.initialize();
     initialized = true;
 
@@ -116,17 +120,6 @@ void _runReleaseVectorSmoke(Directory dir) {
 }
 
 void _runReleaseJiebaSmoke(Directory dir) {
-  final dictDir = Zvec.defaultJiebaDictDir;
-  _checkSmoke(dictDir != null, 'Default Jieba dict dir was not registered');
-  _checkSmoke(
-    File('$dictDir${Platform.pathSeparator}jieba.dict.utf8').existsSync(),
-    'Missing packaged jieba.dict.utf8',
-  );
-  _checkSmoke(
-    File('$dictDir${Platform.pathSeparator}hmm_model.utf8').existsSync(),
-    'Missing packaged hmm_model.utf8',
-  );
-
   Collection? collection;
   CollectionSchema? schema;
   FieldSchema? title;

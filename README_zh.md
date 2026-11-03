@@ -24,16 +24,13 @@
 
 ---
 
-**Zvec Dart SDK** 通过 `dart:ffi` 把阿里巴巴开源的 [Zvec](https://github.com/alibaba/zvec) 向量引擎带到 Flutter 与 Dart —— 没有服务、没有 IPC，只有一个动态库直接跑在你 App 的进程里。让端侧与桌面端的语义检索、RAG、推荐、相似度计算等能力都拥有毫秒级延迟。
+**Zvec Dart SDK** 通过 `dart:ffi` 将 Zvec 向量数据库嵌入 Flutter 应用，支持向量查询、条件过滤、全文检索和本地持久化。
 
-## 💫 特性
+## 特性
 
-- **🚀 原生级速度** — 直连久经考验的 C++ 引擎，无 method channel、无 isolate 序列化开销。
-- **📱 移动端 + 桌面端** — 提供 **Android**、**iOS**、**macOS**、**Linux** 与 **Windows** 预编译产物。
-- **☁️ 安装零摩擦** — 原生库在构建时自动从 GitHub Releases 拉取，pub.dev 包体积保持精简。
-- **🧠 丰富的向量能力** — HNSW / IVF / Flat / 倒排索引，支持混合过滤、Top-K 与 Group-By 查询。
-- **🔒 持久化存储** — WAL 写前日志 + 原子刷盘，App 重启后数据依旧在。
-- **🎯 地道的 Dart API** — 强类型 schema、异常驱动的错误处理、同步式调用。
+- 使用 HNSW、IVF 或 Flat 索引检索向量，通过标量字段过滤，或合并向量和全文检索结果。
+- 使用强类型 schema 定义集合，通过 C API 同步写入和查询文档。
+- 使用预写日志和显式刷盘来持久化集合，应用重启后可重新打开。
 
 ## 📦 安装
 
@@ -41,22 +38,15 @@
 flutter pub add zvec
 ```
 
-或在 `pubspec.yaml` 中添加：
+如需使用 0.8 系列，在 `pubspec.yaml` 中指定 `zvec: ^0.8.0`。
 
-```yaml
-dependencies:
-  zvec: ^0.5.1
-```
+首次构建会从 Zvec 官方 Release 下载目标平台的 C API 原生库，并验证压缩包的 SHA-256。Android 应用的 `minSdk` 至少为 28，iOS 部署目标至少为 14.0，macOS 至少为 11.0。macOS framework 同时包含 Intel 和 Apple Silicon 两种架构。[平台支持说明](PLATFORM_SUPPORT.md) · [上游 SDK 下载](https://github.com/alibaba/zvec/releases/tag/v0.8.0)
 
-> **平台支持**
->
-> | 平台    | 架构                    | 分发方式                                    |
-> | ------- | ----------------------- | ------------------------------------------- |
-> | Android | arm64-v8a                | Gradle 任务 `downloadZvecNativeLibs`        |
-> | iOS     | arm64（真机）            | CocoaPods `prepare_command`（curl + unzip） |
-> | macOS   | arm64                   | CocoaPods `prepare_command`（curl + unzip） |
-> | Linux   | x64                     | Flutter desktop CMake 下载并打包            |
-> | Windows | x64                     | Flutter desktop CMake 下载并打包            |
+## 从 0.5.x 升级
+
+- 引擎已内嵌默认 Jieba 词典和 HMM 模型。移除 `ConfigData.setJiebaDictDir`、`Zvec.setDefaultJiebaDictDir` 调用以及读取 `jiebaDictDir`、`defaultJiebaDictDir` 的代码。使用 `FtsIndexParams(tokenizerName: 'jieba')` 即可启用默认中文分词。
+- 自定义词典目录通过 `FtsIndexParams.extraParams` 的 JSON 字符串传入 `jieba_dict_dir`，追加业务词汇使用 `user_dict_path`。进程级环境变量 `ZVEC_JIEBA_DICT_DIR` 可为未指定目录的字段提供默认值。[上游迁移说明](https://zvec.org/en/blog/2026-10-20-zvec-release/#upgrade-notes)
+- `GroupByVectorQuery` 仍使用构造参数 `groupTopk` 指定每组最多返回的结果数。
 
 ## ⚡ 快速开始
 
@@ -113,23 +103,9 @@ void main() {
 
 完整的 Flutter 示例见 [`example/lib/main.dart`](example/lib/main.dart)。
 
-## 🧬 原生库分发方式
+## 参与贡献
 
-原生库**不打包进 pub.dev tarball**，而是在首次构建时自动下载：
-
-| 平台    | 机制                                                          | 触发时机                         |
-| ------- | ------------------------------------------------------------- | -------------------------------- |
-| Android | `android/build.gradle` 中的 Gradle 任务 `downloadZvecNativeLibs` | `flutter build apk` / `flutter run` |
-| iOS     | `ios/zvec.podspec` 中的 `prepare_command`（curl + unzip）        | `pod install`                     |
-| macOS   | `macos/zvec.podspec` 中的 `prepare_command`（curl + unzip）      | `pod install`                     |
-| Linux   | `linux/CMakeLists.txt` 下载并打包 `libzvec.so`                   | `flutter build linux` / `flutter run -d linux` |
-| Windows | `windows/CMakeLists.txt` 下载并打包 `zvec.dll`                   | `flutter build windows` / `flutter run -d windows` |
-
-这样既能让 Dart 包保持精简，也允许原生二进制独立版本演进。
-
-## 🤝 参与贡献
-
-欢迎提交 Issue 与 Pull Request！想定制插件或重新编译原生库？请参考 **[BUILDING_zh.md](BUILDING_zh.md)** 获取开发者构建指南。如果改动涉及底层引擎本身，请到 [上游 zvec 仓库](https://github.com/alibaba/zvec) 提交。
+运行测试或重新生成绑定的步骤见[开发指南](BUILDING_zh.md)。
 
 ## 📄 许可证
 

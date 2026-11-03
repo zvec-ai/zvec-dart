@@ -15,12 +15,7 @@ void main() {
   setUpAll(() => Zvec.initialize());
   tearDownAll(() => Zvec.shutdown());
 
-  test('uses packaged Jieba dictionaries for FTS queries', () {
-    final dictDir = Zvec.defaultJiebaDictDir;
-    expect(dictDir, isNotNull);
-    expect(File('$dictDir/jieba.dict.utf8').existsSync(), isTrue);
-    expect(File('$dictDir/hmm_model.utf8').existsSync(), isTrue);
-
+  test('queries Chinese text using the embedded Jieba dictionary', () {
     final tmpDir = _createTempDir('jieba_fts');
     Collection? collection;
     try {

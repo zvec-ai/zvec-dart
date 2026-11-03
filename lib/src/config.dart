@@ -153,30 +153,6 @@ class ConfigData {
   double get ftsBruteForceByKeysRatio => ZvecLibrary.bindings
       .zvec_config_data_get_fts_brute_force_by_keys_ratio(_nativePtr);
 
-  /// Set the Jieba dictionary directory.
-  void setJiebaDictDir(String dir) {
-    final dirPtr = dir.toNativeUtf8().cast<Char>();
-    try {
-      checkError(
-        ZvecLibrary.bindings.zvec_config_data_set_jieba_dict_dir(
-          _nativePtr,
-          dirPtr,
-        ),
-      );
-    } finally {
-      calloc.free(dirPtr);
-    }
-  }
-
-  /// Get the Jieba dictionary directory.
-  String? get jiebaDictDir {
-    final ptr = ZvecLibrary.bindings.zvec_config_data_get_jieba_dict_dir(
-      _nativePtr,
-    );
-    if (ptr == nullptr) return null;
-    return ptr.cast<Utf8>().toDartString();
-  }
-
   /// Destroy the native config data.
   void destroy() {
     if (_ptr != null) {
@@ -226,21 +202,4 @@ class Zvec {
   /// Check if the library version is compatible with the given requirements.
   static bool checkVersion(int major, int minor, int patch) =>
       ZvecLibrary.bindings.zvec_check_version(major, minor, patch);
-
-  /// Set the global default Jieba dictionary directory.
-  static void setDefaultJiebaDictDir(String dir) {
-    final dirPtr = dir.toNativeUtf8().cast<Char>();
-    try {
-      ZvecLibrary.bindings.zvec_set_default_jieba_dict_dir(dirPtr);
-    } finally {
-      calloc.free(dirPtr);
-    }
-  }
-
-  /// Get the global default Jieba dictionary directory.
-  static String? get defaultJiebaDictDir {
-    final ptr = ZvecLibrary.bindings.zvec_get_default_jieba_dict_dir();
-    if (ptr == nullptr) return null;
-    return ptr.cast<Utf8>().toDartString();
-  }
 }

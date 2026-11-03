@@ -14,14 +14,16 @@
 
 // FFI-dependent unit tests for the Zvec Dart SDK.
 //
-// These tests require the native library (libzvec.dylib on macOS).
+// These tests require the official zvec C API (libzvec_c_api.dylib on macOS).
 // Run with:
 //   bash scripts/run_tests.sh test/zvec_native_test.dart
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zvec/src/zvec_library.dart';
 import 'package:zvec/zvec.dart';
 
 /// Create a fresh temp directory for test isolation.
@@ -250,11 +252,12 @@ void main() {
       expect(Zvec.isInitialized, isTrue);
     });
 
-    test('version is non-empty string', () {
+    test('loads the 0.8.0 release', () {
       expect(Zvec.version, isNotEmpty);
-      expect(Zvec.versionMajor, greaterThanOrEqualTo(0));
-      expect(Zvec.versionMinor, greaterThanOrEqualTo(0));
-      expect(Zvec.versionPatch, greaterThanOrEqualTo(0));
+      expect(
+        [Zvec.versionMajor, Zvec.versionMinor, Zvec.versionPatch],
+        [0, 8, 0],
+      );
     });
 
     test('checkVersion with current version returns true', () {
@@ -286,30 +289,6 @@ void main() {
       config.destroy();
       // Accessing after destroy should throw StateError
       expect(() => config.memoryLimit, throwsStateError);
-    });
-
-    test('setJiebaDictDir round-trips value', () {
-      final config = ConfigData();
-      config.setJiebaDictDir('/tmp/jieba_dict');
-      expect(config.jiebaDictDir, '/tmp/jieba_dict');
-      config.destroy();
-    });
-
-    test('bundled Jieba dict dir is registered by default', () {
-      final dir = Zvec.defaultJiebaDictDir;
-      expect(dir, isNotNull);
-      expect(File('$dir/jieba.dict.utf8').existsSync(), isTrue);
-      expect(File('$dir/hmm_model.utf8').existsSync(), isTrue);
-    });
-
-    test('setDefaultJiebaDictDir round-trips global value', () {
-      final previous = Zvec.defaultJiebaDictDir;
-      try {
-        Zvec.setDefaultJiebaDictDir('/tmp/zvec_jieba_default');
-        expect(Zvec.defaultJiebaDictDir, '/tmp/zvec_jieba_default');
-      } finally {
-        Zvec.setDefaultJiebaDictDir(previous ?? '');
-      }
     });
 
     test('setFtsBruteForceByKeysRatio round-trips value', () {
@@ -897,6 +876,29 @@ void main() {
   // =========================================================================
   // Task 9: Query and fetch tests
   // =========================================================================
+  test('GroupByVectorQuery keeps the count and per-group limit distinct', () {
+    final query = GroupByVectorQuery(
+      fieldName: 'embedding',
+      vector: Float32List.fromList([1, 0, 0, 0]),
+      groupByFieldName: 'category',
+      groupCount: 7,
+      groupTopk: 2,
+    );
+    try {
+      final bindings = ZvecLibrary.bindings;
+      expect(
+        bindings.zvec_group_by_vector_query_get_group_count(query.nativePtr),
+        7,
+      );
+      expect(
+        bindings.zvec_group_by_vector_query_get_topk_per_group(query.nativePtr),
+        2,
+      );
+    } finally {
+      query.destroy();
+    }
+  });
+
   group('VectorQuery', () {
     late Collection collection;
     late Directory tmpDir;
@@ -1361,7 +1363,58 @@ void main() {
   });
 
   group('Jieba FTS end-to-end', () {
-    test('queries Chinese text using bundled default dict', () {
+    test('a field-specific user dictionary changes only that field', () {
+      final dir = _createTempDir('jieba_custom');
+      addTearDown(() => _cleanupDir(dir));
+      const compound = '量子咖啡豆';
+      final userDict = File('${dir.path}/user.dict.utf8')
+        ..writeAsStringSync('$compound 10000000 n\n');
+      final schema = CollectionSchema(name: 'field_dictionaries');
+      addTearDown(schema.destroy);
+      for (final name in ['custom', 'standard']) {
+        final params = FtsIndexParams(
+          tokenizerName: 'jieba',
+          extraParams: jsonEncode({
+            'cut_mode': 'mix',
+            if (name == 'custom') 'user_dict_path': userDict.path,
+          }),
+        );
+        final field = FieldSchema(name: name, dataType: DataType.string);
+        field.setIndexParams(params);
+        schema.addField(field);
+        field.destroy();
+        params.destroy();
+      }
+      final collection = Collection.createAndOpen(_dbPath(dir), schema);
+      addTearDown(collection.close);
+      final doc = Doc(id: 'product')
+        ..setField('custom', compound)
+        ..setField('standard', compound);
+      addTearDown(doc.destroy);
+      expect(collection.insert([doc]).isAllSuccess, isTrue);
+
+      List<String?> matches(String field, String term) {
+        final fts = FtsQuery(matchString: term);
+        final query = VectorQuery.fts(fieldName: field, fts: fts);
+        try {
+          final results = collection.query(query);
+          final ids = results.map((doc) => doc.pk).toList();
+          for (final hit in results) {
+            hit.destroy();
+          }
+          return ids;
+        } finally {
+          query.destroy();
+          fts.destroy();
+        }
+      }
+
+      expect(matches('custom', compound), ['product']);
+      expect(matches('custom', '量子'), isEmpty);
+      expect(matches('standard', '量子'), ['product']);
+    });
+
+    test('queries Chinese text using the embedded dictionary', () {
       final dir = _createTempDir('jieba_fts');
       Collection? collection;
       try {

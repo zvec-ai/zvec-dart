@@ -176,7 +176,9 @@ class FtsIndexParams extends IndexParams {
   ///
   /// - [tokenizerName]: Name of the tokenizer (e.g. 'jieba', 'standard').
   /// - [filters]: Optional list of text filters to apply.
-  /// - [extraParams]: Optional extra parameters as JSON string.
+  /// - [extraParams]: Optional tokenizer parameters as a JSON string. Jieba
+  ///   uses the embedded dictionary by default. Use `jieba_dict_dir` to replace
+  ///   it or `user_dict_path` to add domain vocabulary to this field.
   FtsIndexParams({
     required String tokenizerName,
     List<String>? filters,

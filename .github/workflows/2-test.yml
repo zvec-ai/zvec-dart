@@ -1,375 +1,176 @@
-# =============================================================================
-# Test Workflow — Run Dart unit tests on every push to main
-#
-# Runs pure-Dart tests, native FFI tests, desktop native/app smoke tests, and
-# pub package/consumer smoke tests.
-# =============================================================================
-name: "Test"
+name: Test
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      hosted_version:
+        description: Build the example against this published version.
+        type: string
+        default: ''
 
-concurrency:
-  group: test-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
-  # =========================================================================
-  # Pure-Dart unit tests (no native library needed)
-  # =========================================================================
-  dart-tests:
-    name: Dart unit tests
+  sdk-floor:
+    if: ${{ !inputs.hosted_version }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run pure-Dart tests
-        run: flutter test test/zvec_test.dart
-
-  # =========================================================================
-  # Minimum SDK compatibility (keeps the advertised Dart/Flutter floor tested)
-  # =========================================================================
-  sdk-compatibility:
-    name: Flutter 3.22.3 compatibility
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter 3.22.3
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.3'
-
-      - name: Install root dependencies
-        run: flutter pub get
-
-      - name: Analyze root package
-        run: flutter analyze --no-fatal-infos
-
-      - name: Install example dependencies
+      - run: flutter pub get && flutter analyze --no-fatal-infos
+      - run: flutter pub get && flutter analyze --no-fatal-infos
         working-directory: example
-        run: flutter pub get
+      - run: flutter test test/zvec_test.dart
 
-      - name: Analyze example package
-        working-directory: example
-        run: flutter analyze --no-fatal-infos
-
-  # =========================================================================
-  # Native FFI tests (requires building libzvec.dylib on macOS)
-  # =========================================================================
-  native-tests:
-    name: Native FFI tests
-    runs-on: macos-14
+  consumer:
+    name: ${{ matrix.sdk || matrix.target }} consumer
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {target: macos, runner: macos-15, sdk: osx-arm64, library: libzvec_c_api.dylib}
+          - {target: linux, runner: ubuntu-24.04, sdk: linux-amd64, library: libzvec_c_api.so}
+          - {target: linux, runner: ubuntu-24.04-arm, sdk: linux-arm64, library: libzvec_c_api.so}
+          - {target: windows, runner: windows-2022, sdk: windows-amd64, library: zvec_c_api.dll}
+          - {target: android, runner: ubuntu-24.04}
+          - {target: ios, runner: macos-15}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Get submodule hash for cache key
-        id: zvec-hash
-        run: echo "hash=$(git submodule status third_party/zvec | awk '{print $1}' | tr -d '-')" >> $GITHUB_OUTPUT
-
-      - name: Cache native build
-        id: native-cache
-        uses: actions/cache@v4
-        with:
-          path: build/macos
-          key: native-macos-${{ runner.arch }}-${{ steps.zvec-hash.outputs.hash }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        if: matrix.sdk != 'linux-arm64'
         with:
           channel: stable
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build macOS native library
-        if: steps.native-cache.outputs.cache-hit != 'true'
-        run: bash scripts/build_macos.sh Release
-
-      - name: Run native FFI tests
-        run: bash scripts/run_tests.sh test/zvec_native_test.dart
-
-  # =========================================================================
-  # Android native build (validates the published minSdk native ABI)
-  # =========================================================================
-  android-native-build:
-    name: Android native build
-    runs-on: macos-14
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK
-        run: sdkmanager --install "ndk;27.2.12479018"
-
-      - name: Set NDK environment
-        run: echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
-
-      - name: Build Android arm64-v8a API 21
-        run: bash scripts/build_android.sh arm64-v8a 21 Release
-
-      - name: Verify Android artifact
-        run: file android/src/main/jniLibs/arm64-v8a/libzvec.so
-
-  # =========================================================================
-  # Desktop native FFI tests + Flutter app build smoke tests
-  # =========================================================================
-  desktop-macos-build:
-    name: Desktop macOS build
-    runs-on: macos-14
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Fetch submodule tags
-        run: cd third_party/zvec && git fetch --tags
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build macOS native library
-        run: bash scripts/build_macos.sh Release
-
-      - name: Verify macOS native artifact
-        run: file macos/zvec_native.framework/zvec_native
-
-      - name: Run macOS native FFI tests
-        env:
-          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
-        run: flutter test test/zvec_native_test.dart
-
-      - name: Generate macOS example platform files
-        working-directory: example
-        run: flutter create --platforms=macos .
-
-      - name: Build macOS example app
-        working-directory: example
-        run: flutter build macos --debug
-
-  desktop-linux-build:
-    name: Desktop Linux build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Fetch submodule tags
-        run: cd third_party/zvec && git fetch --tags
-
-      - name: Install system dependencies
+      # Flutter distributes arm64 Linux engine artifacts separately from the
+      # x64-only Linux SDK archive. Its launcher fetches the native Dart SDK.
+      - if: matrix.sdk == 'linux-arm64'
+        name: Set up Flutter for Linux arm64
+        run: |
+          sdk="$RUNNER_TEMP/flutter"
+          git clone --quiet --depth 1 --branch stable https://github.com/flutter/flutter.git "$sdk"
+          echo "$sdk/bin" >> "$GITHUB_PATH"
+          echo "FLUTTER_ROOT=$sdk" >> "$GITHUB_ENV"
+          "$sdk/bin/flutter" --version
+      - if: matrix.target == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang \
-            cmake \
-            libaio-dev \
-            libgtk-3-dev \
-            ninja-build \
-            pkg-config \
-            zip
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libaio-dev xvfb xauth
+      - if: matrix.target == 'android'
+        uses: actions/setup-java@v4
         with:
-          cmake-version: '3.28'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+          distribution: temurin
+          java-version: '17'
+      - if: matrix.target == 'android'
+        uses: android-actions/setup-android@v3
         with:
-          channel: stable
+          packages: 'platform-tools'
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Linux native library
-        run: bash scripts/build_linux.sh Release
-
-      - name: Verify Linux native artifact
-        run: file linux/lib/libzvec.so
-
-      - name: Run Linux native FFI tests
+      - name: Test against the official native SDK
+        if: matrix.sdk && !inputs.hosted_version
         env:
-          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/linux/libzvec.so
-        run: flutter test test/zvec_native_test.dart
-
-      - name: Generate Linux example platform files
-        working-directory: example
-        run: flutter create --platforms=linux .
-
-      - name: Build Linux example app
-        working-directory: example
-        run: flutter build linux --debug
-
-  desktop-windows-build:
-    name: Desktop Windows build
-    runs-on: windows-2022
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Fetch submodule tags
-        run: cd third_party/zvec && git fetch --tags
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Set up MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1.13.0
-        with:
-          arch: x64
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows native library
-        shell: powershell
-        run: .\scripts\build_windows.ps1 -BuildType Release
-
-      - name: Verify Windows native artifact
-        shell: powershell
-        run: Get-Item windows\lib\zvec.dll
-
-      - name: Run Windows native FFI tests
-        env:
-          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/windows/zvec.dll
-        run: flutter test test/zvec_native_test.dart
-
-      - name: Generate Windows example platform files
-        working-directory: example
-        run: flutter create --platforms=windows .
-
-      - name: Build Windows example app
-        working-directory: example
-        run: flutter build windows --debug
-
-  # =========================================================================
-  # Package dry-run and example integration test
-  # =========================================================================
-  package-tests:
-    name: Package dry run and example integration
-    runs-on: macos-14
-    steps:
-      - name: Checkout with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.28'
-
-      - name: Get submodule hash for cache key
-        id: zvec-hash
-        run: echo "hash=$(git submodule status third_party/zvec | awk '{print $1}' | tr -d '-')" >> $GITHUB_OUTPUT
-
-      - name: Cache native build
-        id: native-cache
-        uses: actions/cache@v4
-        with:
-          path: build/macos
-          key: native-macos-${{ runner.arch }}-${{ steps.zvec-hash.outputs.hash }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Prepare Jieba dictionary assets
-        run: bash scripts/prepare_jieba_assets.sh
-
-      - name: Remove submodule gitlink for pub validation
+          SDK_TARGET: ${{ matrix.sdk }}
+          SDK_LIBRARY: ${{ matrix.library }}
         run: |
-          # Workaround for dart pub bug (dart-lang/pub#3789):
-          # pub incorrectly warns about submodule gitlink entries being gitignored.
-          git rm --cached third_party/zvec
+          flutter pub get
+          dart tool/fetch_zvec.dart --target "$SDK_TARGET" --output build/test-sdk
+          export ZVEC_LIBRARY_PATH="$PWD/build/test-sdk/lib/$SDK_LIBRARY"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            export ZVEC_LIBRARY_PATH="$(cygpath -w "$ZVEC_LIBRARY_PATH")"
+          fi
+          flutter test
+          (cd example && flutter pub get && flutter test test/jieba_fts_integration_test.dart test/release_runtime_smoke_test.dart)
 
-      - name: Dry-run pub package
-        run: dart pub publish --dry-run
+      - name: Read a database created with the 0.5.2 release
+        if: matrix.target == 'macos' && !inputs.hosted_version
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o old.zip https://github.com/zvec-ai/zvec-dart/releases/download/v0.5.2/zvec-framework-macos-arm64.zip
+          echo "2062a327681e95bd1dfbc8b5f523470734af3205ff6b41cb8f79e1216f582adb  old.zip" | shasum -a 256 -c -
+          unzip -q old.zip -d old
+          cd "$GITHUB_WORKSPACE"
+          ZVEC_LIBRARY_PATH="$RUNNER_TEMP/old/zvec_native.framework/zvec_native" dart run test/fixtures/collection_upgrade.dart create "$RUNNER_TEMP/old-db"
+          ZVEC_LIBRARY_PATH="$PWD/build/test-sdk/lib/libzvec_c_api.dylib" dart run test/fixtures/collection_upgrade.dart verify "$RUNNER_TEMP/old-db"
 
-      - name: Build macOS native library
-        if: steps.native-cache.outputs.cache-hit != 'true'
-        run: bash scripts/build_macos.sh Release
-
-      - name: Install example dependencies
-        working-directory: example
-        run: flutter pub get
-
-      - name: Run example Jieba FTS integration test
+      - name: Prepare consumer
         working-directory: example
         env:
-          ZVEC_LIBRARY_PATH: ${{ github.workspace }}/build/macos/libzvec.dylib
-        run: flutter test test/jieba_fts_integration_test.dart
-
-      - name: Build example asset bundle and verify package assets
-        working-directory: example
+          TARGET: ${{ matrix.target }}
+          HOSTED_VERSION: ${{ inputs.hosted_version }}
         run: |
-          flutter build bundle --debug
-          for file in jieba.dict.utf8 hmm_model.utf8; do
-            asset="build/flutter_assets/packages/zvec/assets/jieba_dict/$file"
-            if [ ! -s "$asset" ]; then
-              echo "::error::Missing packaged Jieba asset: $asset"
-              exit 1
+          flutter create --no-pub --platforms="$TARGET" .
+          if [[ -n "$HOSTED_VERSION" ]]; then
+            for attempt in {1..10}; do
+              if flutter pub add "zvec:$HOSTED_VERSION"; then break; fi
+              if [[ "$attempt" == 10 ]]; then exit 1; fi
+              sleep 30
+            done
+          fi
+          flutter pub get
+          if [[ "$TARGET" == ios ]]; then
+            if [[ ! -f ios/Podfile ]]; then
+              cp "$FLUTTER_ROOT/packages/flutter_tools/templates/cocoapods/Podfile-ios" ios/Podfile
             fi
-            ls -lh "$asset"
-          done
+            sed -i '' -E "s/^#?[[:space:]]*platform :ios, '(1[0-3])(\.[0-9]+)*'/platform :ios, '14.0'/" ios/Podfile
+            sed -i '' -E 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-3]\.[0-9]+;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          elif [[ "$TARGET" == macos ]]; then
+            if [[ ! -f macos/Podfile ]]; then
+              cp "$FLUTTER_ROOT/packages/flutter_tools/templates/cocoapods/Podfile-macos" macos/Podfile
+            fi
+            sed -i '' -E "s/^#?[[:space:]]*platform :osx, '10\.[0-9]+'/platform :osx, '11.0'/" macos/Podfile
+            sed -i '' -E 's/MACOSX_DEPLOYMENT_TARGET = 10\.[0-9]+;/MACOSX_DEPLOYMENT_TARGET = 11.0;/g' macos/Runner.xcodeproj/project.pbxproj
+          fi
+
+      - name: Build the packaged app
+        working-directory: example
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          case "$TARGET" in
+            android)
+              flutter build apk --release --target-platform android-arm64
+              apk=build/app/outputs/flutter-apk/app-release.apk
+              unzip -p "$apk" lib/arm64-v8a/libzvec_c_api.so > "$RUNNER_TEMP/libzvec_c_api.so"
+              file "$RUNNER_TEMP/libzvec_c_api.so" | grep -E 'ELF.*aarch64'
+              zipalign=$(find "$ANDROID_HOME/build-tools" -name zipalign | sort -V | tail -1)
+              "$zipalign" -c -P 16 4 "$apk"
+              ;;
+            ios)
+              flutter build ios --release --no-codesign
+              test -s build/ios/iphoneos/Runner.app/Frameworks/zvec_native.framework/zvec_native
+              flutter build ios --simulator --debug --dart-define=ZVEC_RELEASE_SMOKE=true
+              app=build/ios/iphonesimulator/Runner.app
+              test -s "$app/Frameworks/zvec_native.framework/zvec_native"
+              devices="$RUNNER_TEMP/zvec-simulators.json"
+              xcrun simctl list devices available -j > "$devices"
+              simulator=$(jq -er '[.devices | to_entries[] | select(.key | contains(".iOS-")) | .value[] | select(.name | startswith("iPhone"))][0].udid' "$devices")
+              xcrun simctl bootstatus "$simulator" -b
+              xcrun simctl install "$simulator" "$app"
+              bundle=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
+              xcrun simctl launch --console "$simulator" "$bundle" | tee "$RUNNER_TEMP/zvec-simulator.log"
+              grep -F 'zvec release smoke test passed' "$RUNNER_TEMP/zvec-simulator.log"
+              ;;
+            *) flutter build "$TARGET" --release --dart-define=ZVEC_RELEASE_SMOKE=true ;;
+          esac
+      - name: Run packaged desktop app
+        if: matrix.sdk
+        working-directory: example
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          unset ZVEC_LIBRARY_PATH
+          case "$TARGET" in
+            linux) xvfb-run -a build/linux/*/release/bundle/zvec_example ;;
+            macos) build/macos/Build/Products/Release/zvec_example.app/Contents/MacOS/zvec_example ;;
+            windows) build/windows/x64/runner/Release/zvec_example.exe ;;
+          esac

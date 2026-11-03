@@ -1167,45 +1167,6 @@ class ZvecBindings {
       _zvec_config_data_get_optimize_thread_countPtr
           .asFunction<int Function(ffi.Pointer<zvec_config_data_t>)>();
 
-  /// @brief Set jieba dict directory in configuration data
-  /// @param dir Dict directory; NULL or empty leaves the field empty
-  zvec_error_code_t zvec_config_data_set_jieba_dict_dir(
-    ffi.Pointer<zvec_config_data_t> config,
-    ffi.Pointer<ffi.Char> dir,
-  ) {
-    return zvec_error_code_t.fromValue(_zvec_config_data_set_jieba_dict_dir(
-      config,
-      dir,
-    ));
-  }
-
-  late final _zvec_config_data_set_jieba_dict_dirPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.UnsignedInt Function(ffi.Pointer<zvec_config_data_t>,
-              ffi.Pointer<ffi.Char>)>>('zvec_config_data_set_jieba_dict_dir');
-  late final _zvec_config_data_set_jieba_dict_dir =
-      _zvec_config_data_set_jieba_dict_dirPtr.asFunction<
-          int Function(
-              ffi.Pointer<zvec_config_data_t>, ffi.Pointer<ffi.Char>)>();
-
-  /// @brief Get jieba dict directory from configuration data
-  /// @return Pointer owned by config (do not free); empty when unset
-  ffi.Pointer<ffi.Char> zvec_config_data_get_jieba_dict_dir(
-    ffi.Pointer<zvec_config_data_t> config,
-  ) {
-    return _zvec_config_data_get_jieba_dict_dir(
-      config,
-    );
-  }
-
-  late final _zvec_config_data_get_jieba_dict_dirPtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_config_data_t>)>>(
-      'zvec_config_data_get_jieba_dict_dir');
-  late final _zvec_config_data_get_jieba_dict_dir =
-      _zvec_config_data_get_jieba_dict_dirPtr.asFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<zvec_config_data_t>)>();
-
   /// @brief Initialize ZVec library
   /// @param config Configuration data (optional, NULL means using default
   /// configuration)
@@ -1246,42 +1207,64 @@ class ZvecBindings {
   late final _zvec_is_initialized =
       _zvec_is_initializedPtr.asFunction<bool Function()>();
 
-  /// @brief Set the process-wide default jieba dict directory.
+  /// @brief Get the current I/O backend type for DiskAnn disk reads.
   ///
-  /// For language SDKs to call on module load. Thread-safe, decoupled from
-  /// zvec_initialize(); last writer wins. A subsequent zvec_initialize() with
-  /// non-empty config.jieba_dict_dir overrides this. JiebaTokenizer priority:
-  /// per-field > ZVEC_JIEBA_DICT_DIR > this.
+  /// Linux selects the first usable backend in this order: io_uring, libaio,
+  /// then synchronous pread. macOS ARM64 uses synchronous pread. Windows uses
+  /// unbuffered overlapped I/O with a per-context completion port.
   ///
-  /// @param dir UTF-8 directory containing jieba.dict.utf8 + hmm_model.utf8;
-  /// NULL or empty clears the value.
-  void zvec_set_default_jieba_dict_dir(
-    ffi.Pointer<ffi.Char> dir,
+  /// @return zvec_io_backend_type_t The loaded backend type
+  /// ZVEC_IO_BACKEND_TYPE_IO_URING, ZVEC_IO_BACKEND_TYPE_LIBAIO,
+  /// ZVEC_IO_BACKEND_TYPE_PREAD, or
+  /// ZVEC_IO_BACKEND_TYPE_WINDOWS_OVERLAPPED.
+  int zvec_get_io_backend_type() {
+    return _zvec_get_io_backend_type();
+  }
+
+  late final _zvec_get_io_backend_typePtr =
+      _lookup<ffi.NativeFunction<zvec_io_backend_type_t Function()>>(
+          'zvec_get_io_backend_type');
+  late final _zvec_get_io_backend_type =
+      _zvec_get_io_backend_typePtr.asFunction<int Function()>();
+
+  /// @brief Get a human-readable name for the given I/O backend type.
+  ///
+  /// @param type The backend type code.
+  /// @return Thread-local string valid until the next call on this thread;
+  /// "io_uring", "libaio", "pread", "windows_overlapped", or
+  /// "unknown".
+  ffi.Pointer<ffi.Char> zvec_get_io_backend_type_name(
+    int type,
   ) {
-    return _zvec_set_default_jieba_dict_dir(
-      dir,
+    return _zvec_get_io_backend_type_name(
+      type,
     );
   }
 
-  late final _zvec_set_default_jieba_dict_dirPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
-          'zvec_set_default_jieba_dict_dir');
-  late final _zvec_set_default_jieba_dict_dir =
-      _zvec_set_default_jieba_dict_dirPtr
-          .asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+  late final _zvec_get_io_backend_type_namePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+              zvec_io_backend_type_t)>>('zvec_get_io_backend_type_name');
+  late final _zvec_get_io_backend_type_name = _zvec_get_io_backend_type_namePtr
+      .asFunction<ffi.Pointer<ffi.Char> Function(int)>();
 
-  /// @brief Get the process-wide default jieba dict directory.
-  /// @return Thread-local string valid until the next call on this thread;
-  /// empty when unset.
-  ffi.Pointer<ffi.Char> zvec_get_default_jieba_dict_dir() {
-    return _zvec_get_default_jieba_dict_dir();
+  /// @brief Get a human-readable description of the current I/O backend.
+  ///
+  /// The description identifies io_uring, libaio, or pread. On Linux, the pread
+  /// description also explains that io_uring and libaio were unavailable and
+  /// provides guidance for enabling an asynchronous backend. Windows reports its
+  /// overlapped-I/O backend.
+  ///
+  /// @return Thread-local string valid until the next call on this thread.
+  ffi.Pointer<ffi.Char> zvec_get_io_backend_description() {
+    return _zvec_get_io_backend_description();
   }
 
-  late final _zvec_get_default_jieba_dict_dirPtr =
+  late final _zvec_get_io_backend_descriptionPtr =
       _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-          'zvec_get_default_jieba_dict_dir');
-  late final _zvec_get_default_jieba_dict_dir =
-      _zvec_get_default_jieba_dict_dirPtr
+          'zvec_get_io_backend_description');
+  late final _zvec_get_io_backend_description =
+      _zvec_get_io_backend_descriptionPtr
           .asFunction<ffi.Pointer<ffi.Char> Function()>();
 
   /// @brief Create index parameters
@@ -1418,6 +1401,54 @@ class ZvecBindings {
   late final _zvec_index_params_get_quantize_type =
       _zvec_index_params_get_quantize_typePtr
           .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
+
+  /// @brief Set enable_rotate for quantizer (only effective with INT8/INT4
+  /// quantize type)
+  ///
+  /// When enabled, vectors are randomly rotated before INT8/INT4 quantization to
+  /// reduce quantization error. The rotation matrix is stored with the index
+  /// and automatically applied to query vectors at search time.
+  ///
+  /// @param params Index parameters (must be vector index type)
+  /// @param enable_rotate Whether to enable random rotation before quantization
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_quantizer_enable_rotate(
+    ffi.Pointer<zvec_index_params_t> params,
+    bool enable_rotate,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_index_params_set_quantizer_enable_rotate(
+      params,
+      enable_rotate,
+    ));
+  }
+
+  late final _zvec_index_params_set_quantizer_enable_rotatePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_index_params_t>,
+              ffi.Bool)>>('zvec_index_params_set_quantizer_enable_rotate');
+  late final _zvec_index_params_set_quantizer_enable_rotate =
+      _zvec_index_params_set_quantizer_enable_rotatePtr
+          .asFunction<int Function(ffi.Pointer<zvec_index_params_t>, bool)>();
+
+  /// @brief Get enable_rotate setting from quantizer parameters
+  /// @param params Index parameters (must not be NULL)
+  /// @return true if rotation is enabled, false otherwise (default)
+  bool zvec_index_params_get_quantizer_enable_rotate(
+    ffi.Pointer<zvec_index_params_t> params,
+  ) {
+    return _zvec_index_params_get_quantizer_enable_rotate(
+      params,
+    );
+  }
+
+  late final _zvec_index_params_get_quantizer_enable_rotatePtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Bool Function(ffi.Pointer<zvec_index_params_t>)>>(
+      'zvec_index_params_get_quantizer_enable_rotate');
+  late final _zvec_index_params_get_quantizer_enable_rotate =
+      _zvec_index_params_get_quantizer_enable_rotatePtr
+          .asFunction<bool Function(ffi.Pointer<zvec_index_params_t>)>();
 
   /// @brief Set HNSW specific parameters
   /// @param params Index parameters (must be HNSW type)
@@ -1568,6 +1599,133 @@ class ZvecBindings {
               ffi.Pointer<ffi.Bool>,
               ffi.Pointer<ffi.Bool>)>();
 
+  /// @brief Enable or disable Vamana two-pass graph construction
+  /// @param params Index parameters (must be VAMANA type)
+  /// @param two_pass_build Whether to run the full-graph second construction pass
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_vamana_two_pass_build(
+    ffi.Pointer<zvec_index_params_t> params,
+    bool two_pass_build,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_index_params_set_vamana_two_pass_build(
+      params,
+      two_pass_build,
+    ));
+  }
+
+  late final _zvec_index_params_set_vamana_two_pass_buildPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_index_params_t>,
+              ffi.Bool)>>('zvec_index_params_set_vamana_two_pass_build');
+  late final _zvec_index_params_set_vamana_two_pass_build =
+      _zvec_index_params_set_vamana_two_pass_buildPtr
+          .asFunction<int Function(ffi.Pointer<zvec_index_params_t>, bool)>();
+
+  /// @brief Get whether Vamana two-pass graph construction is enabled
+  /// @param params Index parameters (must be VAMANA type)
+  /// @return true if two-pass construction is enabled, false otherwise
+  bool zvec_index_params_get_vamana_two_pass_build(
+    ffi.Pointer<zvec_index_params_t> params,
+  ) {
+    return _zvec_index_params_get_vamana_two_pass_build(
+      params,
+    );
+  }
+
+  late final _zvec_index_params_get_vamana_two_pass_buildPtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Bool Function(ffi.Pointer<zvec_index_params_t>)>>(
+      'zvec_index_params_get_vamana_two_pass_build');
+  late final _zvec_index_params_get_vamana_two_pass_build =
+      _zvec_index_params_get_vamana_two_pass_buildPtr
+          .asFunction<bool Function(ffi.Pointer<zvec_index_params_t>)>();
+
+  /// @brief Set DiskANN specific parameters
+  /// @param params Index parameters (must be DiskANN type)
+  /// @param max_degree Graph connectivity (max degree of Vamana graph)
+  /// @param list_size Build-time list size (candidate list during construction)
+  /// @param pq_chunk_num PQ chunk count (0 disables PQ)
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_diskann_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    int max_degree,
+    int list_size,
+    int pq_chunk_num,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_index_params_set_diskann_params(
+      params,
+      max_degree,
+      list_size,
+      pq_chunk_num,
+    ));
+  }
+
+  late final _zvec_index_params_set_diskann_paramsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_index_params_t>, ffi.Int,
+              ffi.Int, ffi.Int)>>('zvec_index_params_set_diskann_params');
+  late final _zvec_index_params_set_diskann_params =
+      _zvec_index_params_set_diskann_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_index_params_t>, int, int, int)>();
+
+  /// @brief Get DiskANN max_degree parameter
+  /// @param params Index parameters (must not be NULL)
+  /// @return max_degree parameter
+  int zvec_index_params_get_diskann_max_degree(
+    ffi.Pointer<zvec_index_params_t> params,
+  ) {
+    return _zvec_index_params_get_diskann_max_degree(
+      params,
+    );
+  }
+
+  late final _zvec_index_params_get_diskann_max_degreePtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<zvec_index_params_t>)>>(
+      'zvec_index_params_get_diskann_max_degree');
+  late final _zvec_index_params_get_diskann_max_degree =
+      _zvec_index_params_get_diskann_max_degreePtr
+          .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
+
+  /// @brief Get DiskANN list_size parameter
+  /// @param params Index parameters (must not be NULL)
+  /// @return list_size parameter
+  int zvec_index_params_get_diskann_list_size(
+    ffi.Pointer<zvec_index_params_t> params,
+  ) {
+    return _zvec_index_params_get_diskann_list_size(
+      params,
+    );
+  }
+
+  late final _zvec_index_params_get_diskann_list_sizePtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<zvec_index_params_t>)>>(
+      'zvec_index_params_get_diskann_list_size');
+  late final _zvec_index_params_get_diskann_list_size =
+      _zvec_index_params_get_diskann_list_sizePtr
+          .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
+
+  /// @brief Get DiskANN pq_chunk_num parameter
+  /// @param params Index parameters (must not be NULL)
+  /// @return pq_chunk_num parameter
+  int zvec_index_params_get_diskann_pq_chunk_num(
+    ffi.Pointer<zvec_index_params_t> params,
+  ) {
+    return _zvec_index_params_get_diskann_pq_chunk_num(
+      params,
+    );
+  }
+
+  late final _zvec_index_params_get_diskann_pq_chunk_numPtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Int Function(ffi.Pointer<zvec_index_params_t>)>>(
+      'zvec_index_params_get_diskann_pq_chunk_num');
+  late final _zvec_index_params_get_diskann_pq_chunk_num =
+      _zvec_index_params_get_diskann_pq_chunk_numPtr
+          .asFunction<int Function(ffi.Pointer<zvec_index_params_t>)>();
+
   /// @brief Set IVF specific parameters
   /// @param params Index parameters (must be IVF type)
   /// @param n_list Number of cluster centers
@@ -1628,6 +1786,67 @@ class ZvecBindings {
           int Function(ffi.Pointer<zvec_index_params_t>, ffi.Pointer<ffi.Int>,
               ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Bool>)>();
 
+  /// @brief Set IVF RaBitQ specific parameters
+  /// @param params Index parameters (must be IVF_RABITQ type)
+  /// @param nlist Number of cluster centers
+  /// @param total_bits Total bits for RaBitQ quantization
+  /// @param sample_count Sample count for training, 0 means use all vectors
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_set_ivf_rabitq_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    int nlist,
+    int total_bits,
+    int sample_count,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_index_params_set_ivf_rabitq_params(
+      params,
+      nlist,
+      total_bits,
+      sample_count,
+    ));
+  }
+
+  late final _zvec_index_params_set_ivf_rabitq_paramsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_index_params_t>, ffi.Int,
+              ffi.Int, ffi.Int)>>('zvec_index_params_set_ivf_rabitq_params');
+  late final _zvec_index_params_set_ivf_rabitq_params =
+      _zvec_index_params_set_ivf_rabitq_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_index_params_t>, int, int, int)>();
+
+  /// @brief Get IVF RaBitQ parameters (all at once)
+  /// @param params Index parameters (must be IVF_RABITQ type)
+  /// @param out_nlist Output parameter for nlist
+  /// @param out_total_bits Output parameter for total_bits
+  /// @param out_sample_count Output parameter for sample_count
+  /// @return ZVEC_OK on success, error code on failure
+  zvec_error_code_t zvec_index_params_get_ivf_rabitq_params(
+    ffi.Pointer<zvec_index_params_t> params,
+    ffi.Pointer<ffi.Int> out_nlist,
+    ffi.Pointer<ffi.Int> out_total_bits,
+    ffi.Pointer<ffi.Int> out_sample_count,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_index_params_get_ivf_rabitq_params(
+      params,
+      out_nlist,
+      out_total_bits,
+      out_sample_count,
+    ));
+  }
+
+  late final _zvec_index_params_get_ivf_rabitq_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(
+                  ffi.Pointer<zvec_index_params_t>,
+                  ffi.Pointer<ffi.Int>,
+                  ffi.Pointer<ffi.Int>,
+                  ffi.Pointer<ffi.Int>)>>(
+      'zvec_index_params_get_ivf_rabitq_params');
+  late final _zvec_index_params_get_ivf_rabitq_params =
+      _zvec_index_params_get_ivf_rabitq_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_index_params_t>, ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Int>)>();
+
   /// @brief Get invert index parameters (all at once)
   /// @param params Index parameters (must not be NULL)
   /// @param out_enable_range_opt Output parameter for enable_range_optimization
@@ -1683,10 +1902,39 @@ class ZvecBindings {
 
   /// @brief Set FTS index specific parameters
   /// @param params Index parameters (must be FTS type)
-  /// @param tokenizer_name Tokenizer pipeline name (NULL keeps current value)
-  /// @param filters Token filter names (NULL keeps current value)
-  /// @param extra_params Additional tokenizer parameters (NULL keeps current
-  /// value)
+  /// @param tokenizer_name Tokenizer pipeline name (NULL keeps current value).
+  /// Supported values are "standard", "ngram", "jieba", and "whitespace".
+  /// @param filters Token filter names (NULL keeps current value). Supported
+  /// values are "lowercase", "ascii_folding", and "stemmer".
+  /// @param extra_params Additional tokenizer/filter parameters (NULL keeps
+  /// current value). Must be empty or a JSON object string. Supported keys by
+  /// tokenizer/filter:
+  /// Tokenizers:
+  /// standard:
+  /// - "max_token_length" (positive integer).
+  /// ngram:
+  /// - "ngram_min" (positive integer, default 2).
+  /// - "ngram_max" (positive integer, default 2).
+  /// - "token_chars" (array of "letter", "digit", "whitespace",
+  /// "punctuation", "symbol"; default [] keeps all valid UTF-8
+  /// characters). custom_token_chars is not supported.
+  /// jieba:
+  /// - "jieba_dict_dir" (optional external directory containing
+  /// jieba.dict.utf8 and hmm_model.utf8; priority: field value >
+  /// ZVEC_JIEBA_DICT_DIR > embedded defaults).
+  /// - "user_dict_path" (user dictionary path; augments the selected
+  /// dictionary, including the embedded default).
+  /// - "cut_mode" ("search", "mix", "full", or "hmm"; default "search").
+  /// whitespace:
+  /// - no extra_params.
+  /// Filters:
+  /// lowercase:
+  /// - no extra_params.
+  /// ascii_folding:
+  /// - no extra_params.
+  /// stemmer:
+  /// - "stemmer_lang" (Snowball language/algorithm; default "english"),
+  /// for example {"stemmer_lang":"porter"} for ES behaviour.
   /// @return ZVEC_OK on success, error code on failure
   zvec_error_code_t zvec_index_params_set_fts_params(
     ffi.Pointer<zvec_index_params_t> params,
@@ -2213,6 +2461,266 @@ class ZvecBindings {
       _zvec_query_params_ivf_get_is_using_refinerPtr
           .asFunction<bool Function(ffi.Pointer<zvec_ivf_query_params_t>)>();
 
+  /// @brief Create IVF RaBitQ query parameters
+  /// @param nprobe Number of clusters to probe (default: 10)
+  /// @param radius Search radius (default: 0.0)
+  /// @param is_linear Whether linear search (default: false)
+  /// @param is_using_refiner Whether using refiner (default: false)
+  /// @return zvec_ivf_rabitq_query_params_t* Pointer to the newly created IVF
+  /// RaBitQ query parameters
+  ffi.Pointer<zvec_ivf_rabitq_query_params_t>
+      zvec_query_params_ivf_rabitq_create(
+    int nprobe,
+    double radius,
+    bool is_linear,
+    bool is_using_refiner,
+  ) {
+    return _zvec_query_params_ivf_rabitq_create(
+      nprobe,
+      radius,
+      is_linear,
+      is_using_refiner,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_createPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<zvec_ivf_rabitq_query_params_t> Function(
+              ffi.Int,
+              ffi.Float,
+              ffi.Bool,
+              ffi.Bool)>>('zvec_query_params_ivf_rabitq_create');
+  late final _zvec_query_params_ivf_rabitq_create =
+      _zvec_query_params_ivf_rabitq_createPtr.asFunction<
+          ffi.Pointer<zvec_ivf_rabitq_query_params_t> Function(
+              int, double, bool, bool)>();
+
+  /// @brief Destroy IVF RaBitQ query parameters
+  /// @param params IVF RaBitQ query parameters pointer
+  void zvec_query_params_ivf_rabitq_destroy(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_destroy(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_destroyPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_destroy');
+  late final _zvec_query_params_ivf_rabitq_destroy =
+      _zvec_query_params_ivf_rabitq_destroyPtr.asFunction<
+          void Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
+  /// @brief Set number of probe clusters
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @param nprobe Number of probe clusters
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_ivf_rabitq_set_nprobe(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+    int nprobe,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_query_params_ivf_rabitq_set_nprobe(
+      params,
+      nprobe,
+    ));
+  }
+
+  late final _zvec_query_params_ivf_rabitq_set_nprobePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>,
+              ffi.Int)>>('zvec_query_params_ivf_rabitq_set_nprobe');
+  late final _zvec_query_params_ivf_rabitq_set_nprobe =
+      _zvec_query_params_ivf_rabitq_set_nprobePtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>, int)>();
+
+  /// @brief Get number of probe clusters
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @return int Number of probe clusters
+  int zvec_query_params_ivf_rabitq_get_nprobe(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_get_nprobe(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_get_nprobePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_get_nprobe');
+  late final _zvec_query_params_ivf_rabitq_get_nprobe =
+      _zvec_query_params_ivf_rabitq_get_nprobePtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
+  /// @brief Set candidate expansion factor used by the refiner
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @param scale_factor Candidate expansion factor
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_ivf_rabitq_set_scale_factor(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+    double scale_factor,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_query_params_ivf_rabitq_set_scale_factor(
+      params,
+      scale_factor,
+    ));
+  }
+
+  late final _zvec_query_params_ivf_rabitq_set_scale_factorPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>,
+              ffi.Float)>>('zvec_query_params_ivf_rabitq_set_scale_factor');
+  late final _zvec_query_params_ivf_rabitq_set_scale_factor =
+      _zvec_query_params_ivf_rabitq_set_scale_factorPtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>, double)>();
+
+  /// @brief Get candidate expansion factor used by the refiner
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @return float Candidate expansion factor
+  double zvec_query_params_ivf_rabitq_get_scale_factor(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_get_scale_factor(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_get_scale_factorPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Float Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_get_scale_factor');
+  late final _zvec_query_params_ivf_rabitq_get_scale_factor =
+      _zvec_query_params_ivf_rabitq_get_scale_factorPtr.asFunction<
+          double Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
+  /// @brief Set search radius
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @param radius Search radius
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_ivf_rabitq_set_radius(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+    double radius,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_query_params_ivf_rabitq_set_radius(
+      params,
+      radius,
+    ));
+  }
+
+  late final _zvec_query_params_ivf_rabitq_set_radiusPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>,
+              ffi.Float)>>('zvec_query_params_ivf_rabitq_set_radius');
+  late final _zvec_query_params_ivf_rabitq_set_radius =
+      _zvec_query_params_ivf_rabitq_set_radiusPtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>, double)>();
+
+  /// @brief Get search radius
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @return float Search radius
+  double zvec_query_params_ivf_rabitq_get_radius(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_get_radius(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_get_radiusPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Float Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_get_radius');
+  late final _zvec_query_params_ivf_rabitq_get_radius =
+      _zvec_query_params_ivf_rabitq_get_radiusPtr.asFunction<
+          double Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
+  /// @brief Set linear search mode
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @param is_linear Whether linear search
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_ivf_rabitq_set_is_linear(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+    bool is_linear,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_query_params_ivf_rabitq_set_is_linear(
+      params,
+      is_linear,
+    ));
+  }
+
+  late final _zvec_query_params_ivf_rabitq_set_is_linearPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>,
+              ffi.Bool)>>('zvec_query_params_ivf_rabitq_set_is_linear');
+  late final _zvec_query_params_ivf_rabitq_set_is_linear =
+      _zvec_query_params_ivf_rabitq_set_is_linearPtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>, bool)>();
+
+  /// @brief Get linear search mode
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @return bool Whether linear search
+  bool zvec_query_params_ivf_rabitq_get_is_linear(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_get_is_linear(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_get_is_linearPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Bool Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_get_is_linear');
+  late final _zvec_query_params_ivf_rabitq_get_is_linear =
+      _zvec_query_params_ivf_rabitq_get_is_linearPtr.asFunction<
+          bool Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
+  /// @brief Set whether to use refiner
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @param is_using_refiner Whether to use refiner
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_ivf_rabitq_set_is_using_refiner(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+    bool is_using_refiner,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_query_params_ivf_rabitq_set_is_using_refiner(
+      params,
+      is_using_refiner,
+    ));
+  }
+
+  late final _zvec_query_params_ivf_rabitq_set_is_using_refinerPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>,
+              ffi.Bool)>>('zvec_query_params_ivf_rabitq_set_is_using_refiner');
+  late final _zvec_query_params_ivf_rabitq_set_is_using_refiner =
+      _zvec_query_params_ivf_rabitq_set_is_using_refinerPtr.asFunction<
+          int Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>, bool)>();
+
+  /// @brief Get whether to use refiner
+  /// @param params IVF RaBitQ query parameters pointer
+  /// @return bool Whether to use refiner
+  bool zvec_query_params_ivf_rabitq_get_is_using_refiner(
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> params,
+  ) {
+    return _zvec_query_params_ivf_rabitq_get_is_using_refiner(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_ivf_rabitq_get_is_using_refinerPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Bool Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_query_params_ivf_rabitq_get_is_using_refiner');
+  late final _zvec_query_params_ivf_rabitq_get_is_using_refiner =
+      _zvec_query_params_ivf_rabitq_get_is_using_refinerPtr.asFunction<
+          bool Function(ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
   /// @brief Create Flat query parameters
   /// @param is_using_refiner Whether using refiner (default: false)
   /// @param scale_factor Scale factor (default: 10.0)
@@ -2718,6 +3226,209 @@ class ZvecBindings {
       _zvec_query_params_vamana_get_is_using_refinerPtr
           .asFunction<bool Function(ffi.Pointer<zvec_vamana_query_params_t>)>();
 
+  /// @brief Create DiskANN query parameters
+  /// @param list_size Search frontier size (default: 300)
+  /// @return zvec_diskann_query_params_t* Pointer to the newly created DiskANN
+  /// query parameters
+  ffi.Pointer<zvec_diskann_query_params_t> zvec_query_params_diskann_create(
+    int list_size,
+  ) {
+    return _zvec_query_params_diskann_create(
+      list_size,
+    );
+  }
+
+  late final _zvec_query_params_diskann_createPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<zvec_diskann_query_params_t> Function(
+              ffi.Int)>>('zvec_query_params_diskann_create');
+  late final _zvec_query_params_diskann_create =
+      _zvec_query_params_diskann_createPtr
+          .asFunction<ffi.Pointer<zvec_diskann_query_params_t> Function(int)>();
+
+  /// @brief Destroy DiskANN query parameters
+  /// @param params DiskANN query parameters pointer
+  void zvec_query_params_diskann_destroy(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+  ) {
+    return _zvec_query_params_diskann_destroy(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_diskann_destroyPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_query_params_diskann_destroy');
+  late final _zvec_query_params_diskann_destroy =
+      _zvec_query_params_diskann_destroyPtr.asFunction<
+          void Function(ffi.Pointer<zvec_diskann_query_params_t>)>();
+
+  /// @brief Set search frontier size
+  /// @param params DiskANN query parameters pointer
+  /// @param list_size Search frontier size
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_diskann_set_list_size(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+    int list_size,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_query_params_diskann_set_list_size(
+      params,
+      list_size,
+    ));
+  }
+
+  late final _zvec_query_params_diskann_set_list_sizePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_diskann_query_params_t>,
+              ffi.Int)>>('zvec_query_params_diskann_set_list_size');
+  late final _zvec_query_params_diskann_set_list_size =
+      _zvec_query_params_diskann_set_list_sizePtr.asFunction<
+          int Function(ffi.Pointer<zvec_diskann_query_params_t>, int)>();
+
+  /// @brief Get search frontier size
+  /// @param params DiskANN query parameters pointer
+  /// @return int Search frontier size
+  int zvec_query_params_diskann_get_list_size(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+  ) {
+    return _zvec_query_params_diskann_get_list_size(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_diskann_get_list_sizePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_query_params_diskann_get_list_size');
+  late final _zvec_query_params_diskann_get_list_size =
+      _zvec_query_params_diskann_get_list_sizePtr
+          .asFunction<int Function(ffi.Pointer<zvec_diskann_query_params_t>)>();
+
+  /// @brief Set search radius (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @param radius Search radius
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_diskann_set_radius(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+    double radius,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_query_params_diskann_set_radius(
+      params,
+      radius,
+    ));
+  }
+
+  late final _zvec_query_params_diskann_set_radiusPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_diskann_query_params_t>,
+              ffi.Float)>>('zvec_query_params_diskann_set_radius');
+  late final _zvec_query_params_diskann_set_radius =
+      _zvec_query_params_diskann_set_radiusPtr.asFunction<
+          int Function(ffi.Pointer<zvec_diskann_query_params_t>, double)>();
+
+  /// @brief Get search radius (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @return float Search radius
+  double zvec_query_params_diskann_get_radius(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+  ) {
+    return _zvec_query_params_diskann_get_radius(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_diskann_get_radiusPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Float Function(ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_query_params_diskann_get_radius');
+  late final _zvec_query_params_diskann_get_radius =
+      _zvec_query_params_diskann_get_radiusPtr.asFunction<
+          double Function(ffi.Pointer<zvec_diskann_query_params_t>)>();
+
+  /// @brief Set linear search mode (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @param is_linear Whether linear search
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_diskann_set_is_linear(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+    bool is_linear,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_query_params_diskann_set_is_linear(
+      params,
+      is_linear,
+    ));
+  }
+
+  late final _zvec_query_params_diskann_set_is_linearPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_diskann_query_params_t>,
+              ffi.Bool)>>('zvec_query_params_diskann_set_is_linear');
+  late final _zvec_query_params_diskann_set_is_linear =
+      _zvec_query_params_diskann_set_is_linearPtr.asFunction<
+          int Function(ffi.Pointer<zvec_diskann_query_params_t>, bool)>();
+
+  /// @brief Get linear search mode (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @return bool Whether linear search
+  bool zvec_query_params_diskann_get_is_linear(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+  ) {
+    return _zvec_query_params_diskann_get_is_linear(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_diskann_get_is_linearPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Bool Function(ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_query_params_diskann_get_is_linear');
+  late final _zvec_query_params_diskann_get_is_linear =
+      _zvec_query_params_diskann_get_is_linearPtr.asFunction<
+          bool Function(ffi.Pointer<zvec_diskann_query_params_t>)>();
+
+  /// @brief Set whether to use refiner (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @param is_using_refiner Whether to use refiner
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_query_params_diskann_set_is_using_refiner(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+    bool is_using_refiner,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_query_params_diskann_set_is_using_refiner(
+      params,
+      is_using_refiner,
+    ));
+  }
+
+  late final _zvec_query_params_diskann_set_is_using_refinerPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_diskann_query_params_t>,
+              ffi.Bool)>>('zvec_query_params_diskann_set_is_using_refiner');
+  late final _zvec_query_params_diskann_set_is_using_refiner =
+      _zvec_query_params_diskann_set_is_using_refinerPtr.asFunction<
+          int Function(ffi.Pointer<zvec_diskann_query_params_t>, bool)>();
+
+  /// @brief Get whether to use refiner (common parameter from QueryParams base)
+  /// @param params DiskANN query parameters pointer
+  /// @return bool Whether to use refiner
+  bool zvec_query_params_diskann_get_is_using_refiner(
+    ffi.Pointer<zvec_diskann_query_params_t> params,
+  ) {
+    return _zvec_query_params_diskann_get_is_using_refiner(
+      params,
+    );
+  }
+
+  late final _zvec_query_params_diskann_get_is_using_refinerPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Bool Function(ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_query_params_diskann_get_is_using_refiner');
+  late final _zvec_query_params_diskann_get_is_using_refiner =
+      _zvec_query_params_diskann_get_is_using_refinerPtr.asFunction<
+          bool Function(ffi.Pointer<zvec_diskann_query_params_t>)>();
+
   /// @brief Create vector query
   /// @return zvec_vector_query_t* Pointer to the newly created vector query
   ffi.Pointer<zvec_vector_query_t> zvec_vector_query_create() {
@@ -3116,6 +3827,30 @@ class ZvecBindings {
           int Function(ffi.Pointer<zvec_vector_query_t>,
               ffi.Pointer<zvec_ivf_query_params_t>)>();
 
+  /// @brief Set IVF RaBitQ query parameters (takes ownership)
+  /// @param query Vector query pointer
+  /// @param ivf_rabitq_params IVF RaBitQ query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_ivf_rabitq_params(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> ivf_rabitq_params,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_vector_query_set_ivf_rabitq_params(
+      query,
+      ivf_rabitq_params,
+    ));
+  }
+
+  late final _zvec_vector_query_set_ivf_rabitq_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(ffi.Pointer<zvec_vector_query_t>,
+                  ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_vector_query_set_ivf_rabitq_params');
+  late final _zvec_vector_query_set_ivf_rabitq_params =
+      _zvec_vector_query_set_ivf_rabitq_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_vector_query_t>,
+              ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
   /// @brief Set Flat query parameters (takes ownership)
   /// @param query Vector query pointer
   /// @param flat_params Flat query parameters pointer
@@ -3187,6 +3922,30 @@ class ZvecBindings {
       _zvec_vector_query_set_vamana_paramsPtr.asFunction<
           int Function(ffi.Pointer<zvec_vector_query_t>,
               ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set DiskANN query parameters (takes ownership)
+  /// @param query Vector query pointer
+  /// @param diskann_params DiskANN query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_vector_query_set_diskann_params(
+    ffi.Pointer<zvec_vector_query_t> query,
+    ffi.Pointer<zvec_diskann_query_params_t> diskann_params,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_vector_query_set_diskann_params(
+      query,
+      diskann_params,
+    ));
+  }
+
+  late final _zvec_vector_query_set_diskann_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(ffi.Pointer<zvec_vector_query_t>,
+                  ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_vector_query_set_diskann_params');
+  late final _zvec_vector_query_set_diskann_params =
+      _zvec_vector_query_set_diskann_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_vector_query_t>,
+              ffi.Pointer<zvec_diskann_query_params_t>)>();
 
   /// @brief Create FTS query payload
   /// @return zvec_fts_t* Pointer to the newly created FTS query payload
@@ -3509,46 +4268,46 @@ class ZvecBindings {
       _zvec_group_by_vector_query_get_group_countPtr.asFunction<
           int Function(ffi.Pointer<zvec_group_by_vector_query_t>)>();
 
-  /// @brief Set group topk
+  /// @brief Set the maximum number of results per group
   /// @param query Group by vector query pointer
-  /// @param topk Number of results per group
+  /// @param topk_per_group Number of results per group
   /// @return zvec_error_code_t Error code
-  zvec_error_code_t zvec_group_by_vector_query_set_group_topk(
+  zvec_error_code_t zvec_group_by_vector_query_set_topk_per_group(
     ffi.Pointer<zvec_group_by_vector_query_t> query,
-    int topk,
+    int topk_per_group,
   ) {
     return zvec_error_code_t
-        .fromValue(_zvec_group_by_vector_query_set_group_topk(
+        .fromValue(_zvec_group_by_vector_query_set_topk_per_group(
       query,
-      topk,
+      topk_per_group,
     ));
   }
 
-  late final _zvec_group_by_vector_query_set_group_topkPtr = _lookup<
+  late final _zvec_group_by_vector_query_set_topk_per_groupPtr = _lookup<
       ffi.NativeFunction<
           ffi.UnsignedInt Function(ffi.Pointer<zvec_group_by_vector_query_t>,
-              ffi.Uint32)>>('zvec_group_by_vector_query_set_group_topk');
-  late final _zvec_group_by_vector_query_set_group_topk =
-      _zvec_group_by_vector_query_set_group_topkPtr.asFunction<
+              ffi.Uint32)>>('zvec_group_by_vector_query_set_topk_per_group');
+  late final _zvec_group_by_vector_query_set_topk_per_group =
+      _zvec_group_by_vector_query_set_topk_per_groupPtr.asFunction<
           int Function(ffi.Pointer<zvec_group_by_vector_query_t>, int)>();
 
-  /// @brief Get group topk
+  /// @brief Get the maximum number of results per group
   /// @param query Group by vector query pointer
   /// @return uint32_t Number of results per group
-  int zvec_group_by_vector_query_get_group_topk(
+  int zvec_group_by_vector_query_get_topk_per_group(
     ffi.Pointer<zvec_group_by_vector_query_t> query,
   ) {
-    return _zvec_group_by_vector_query_get_group_topk(
+    return _zvec_group_by_vector_query_get_topk_per_group(
       query,
     );
   }
 
-  late final _zvec_group_by_vector_query_get_group_topkPtr = _lookup<
+  late final _zvec_group_by_vector_query_get_topk_per_groupPtr = _lookup<
           ffi.NativeFunction<
               ffi.Uint32 Function(ffi.Pointer<zvec_group_by_vector_query_t>)>>(
-      'zvec_group_by_vector_query_get_group_topk');
-  late final _zvec_group_by_vector_query_get_group_topk =
-      _zvec_group_by_vector_query_get_group_topkPtr.asFunction<
+      'zvec_group_by_vector_query_get_topk_per_group');
+  late final _zvec_group_by_vector_query_get_topk_per_group =
+      _zvec_group_by_vector_query_get_topk_per_groupPtr.asFunction<
           int Function(ffi.Pointer<zvec_group_by_vector_query_t>)>();
 
   /// @brief Set query vector data
@@ -3809,6 +4568,32 @@ class ZvecBindings {
           int Function(ffi.Pointer<zvec_group_by_vector_query_t>,
               ffi.Pointer<zvec_ivf_query_params_t>)>();
 
+  /// @brief Set IVF RaBitQ query parameters (takes ownership)
+  /// @param query Group by vector query pointer
+  /// @param ivf_rabitq_params IVF RaBitQ query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_group_by_vector_query_set_ivf_rabitq_params(
+    ffi.Pointer<zvec_group_by_vector_query_t> query,
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> ivf_rabitq_params,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_group_by_vector_query_set_ivf_rabitq_params(
+      query,
+      ivf_rabitq_params,
+    ));
+  }
+
+  late final _zvec_group_by_vector_query_set_ivf_rabitq_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(
+                  ffi.Pointer<zvec_group_by_vector_query_t>,
+                  ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_group_by_vector_query_set_ivf_rabitq_params');
+  late final _zvec_group_by_vector_query_set_ivf_rabitq_params =
+      _zvec_group_by_vector_query_set_ivf_rabitq_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_group_by_vector_query_t>,
+              ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
   /// @brief Set Flat query parameters (takes ownership)
   /// @param query Group by vector query pointer
   /// @param flat_params Flat query parameters pointer
@@ -3860,6 +4645,32 @@ class ZvecBindings {
       _zvec_group_by_vector_query_set_vamana_paramsPtr.asFunction<
           int Function(ffi.Pointer<zvec_group_by_vector_query_t>,
               ffi.Pointer<zvec_vamana_query_params_t>)>();
+
+  /// @brief Set DiskANN query parameters (takes ownership)
+  /// @param query Group by vector query pointer
+  /// @param diskann_params DiskANN query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_group_by_vector_query_set_diskann_params(
+    ffi.Pointer<zvec_group_by_vector_query_t> query,
+    ffi.Pointer<zvec_diskann_query_params_t> diskann_params,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_group_by_vector_query_set_diskann_params(
+      query,
+      diskann_params,
+    ));
+  }
+
+  late final _zvec_group_by_vector_query_set_diskann_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(
+                  ffi.Pointer<zvec_group_by_vector_query_t>,
+                  ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_group_by_vector_query_set_diskann_params');
+  late final _zvec_group_by_vector_query_set_diskann_params =
+      _zvec_group_by_vector_query_set_diskann_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_group_by_vector_query_t>,
+              ffi.Pointer<zvec_diskann_query_params_t>)>();
 
   /// @brief Set RRF rerank strategy on a multi-query.
   /// @param query Multi-query pointer
@@ -4441,6 +5252,30 @@ class ZvecBindings {
           int Function(ffi.Pointer<zvec_sub_query_t>,
               ffi.Pointer<zvec_ivf_query_params_t>)>();
 
+  /// @brief Set IVF RaBitQ query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param ivf_rabitq_params IVF RaBitQ query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_ivf_rabitq_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_ivf_rabitq_query_params_t> ivf_rabitq_params,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_sub_query_set_ivf_rabitq_params(
+      query,
+      ivf_rabitq_params,
+    ));
+  }
+
+  late final _zvec_sub_query_set_ivf_rabitq_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(ffi.Pointer<zvec_sub_query_t>,
+                  ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>>(
+      'zvec_sub_query_set_ivf_rabitq_params');
+  late final _zvec_sub_query_set_ivf_rabitq_params =
+      _zvec_sub_query_set_ivf_rabitq_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_ivf_rabitq_query_params_t>)>();
+
   /// @brief Set Flat query parameters (takes ownership)
   /// @param query Sub-query pointer
   /// @param flat_params Flat query parameters pointer
@@ -4533,6 +5368,30 @@ class ZvecBindings {
               ffi.Pointer<zvec_fts_t>)>>('zvec_sub_query_set_fts');
   late final _zvec_sub_query_set_fts = _zvec_sub_query_set_ftsPtr.asFunction<
       int Function(ffi.Pointer<zvec_sub_query_t>, ffi.Pointer<zvec_fts_t>)>();
+
+  /// @brief Set DiskANN query parameters (takes ownership)
+  /// @param query Sub-query pointer
+  /// @param diskann_params DiskANN query parameters pointer
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_sub_query_set_diskann_params(
+    ffi.Pointer<zvec_sub_query_t> query,
+    ffi.Pointer<zvec_diskann_query_params_t> diskann_params,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_sub_query_set_diskann_params(
+      query,
+      diskann_params,
+    ));
+  }
+
+  late final _zvec_sub_query_set_diskann_paramsPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(ffi.Pointer<zvec_sub_query_t>,
+                  ffi.Pointer<zvec_diskann_query_params_t>)>>(
+      'zvec_sub_query_set_diskann_params');
+  late final _zvec_sub_query_set_diskann_params =
+      _zvec_sub_query_set_diskann_paramsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_sub_query_t>,
+              ffi.Pointer<zvec_diskann_query_params_t>)>();
 
   /// @brief Create collection options
   /// @return zvec_collection_options_t* Pointer to the newly created collection
@@ -5924,6 +6783,9 @@ class ZvecBindings {
           ffi.Pointer<ffi.Pointer<zvec_collection_t>>)>();
 
   /// @brief Close collection
+  ///
+  /// Only releases this handle; the collection itself closes once the last
+  /// handle is released, waiting for any open iterators first.
   /// @param collection Collection handle
   /// @return zvec_error_code_t Error code
   zvec_error_code_t zvec_collection_close(
@@ -6747,6 +7609,174 @@ class ZvecBindings {
           bool,
           ffi.Pointer<ffi.Pointer<ffi.Pointer<zvec_doc_t>>>,
           ffi.Pointer<ffi.Size>)>();
+
+  /// @brief Create an iterator options object with default values
+  /// (output_fields = all, include_vector = true).
+  /// @return Options handle, or NULL on allocation failure.
+  ffi.Pointer<zvec_iterator_options_t> zvec_iterator_options_create() {
+    return _zvec_iterator_options_create();
+  }
+
+  late final _zvec_iterator_options_createPtr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<zvec_iterator_options_t> Function()>>(
+      'zvec_iterator_options_create');
+  late final _zvec_iterator_options_create = _zvec_iterator_options_createPtr
+      .asFunction<ffi.Pointer<zvec_iterator_options_t> Function()>();
+
+  /// @brief Destroy an iterator options object.
+  /// @param options Options handle (may be NULL).
+  void zvec_iterator_options_destroy(
+    ffi.Pointer<zvec_iterator_options_t> options,
+  ) {
+    return _zvec_iterator_options_destroy(
+      options,
+    );
+  }
+
+  late final _zvec_iterator_options_destroyPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Pointer<zvec_iterator_options_t>)>>(
+      'zvec_iterator_options_destroy');
+  late final _zvec_iterator_options_destroy = _zvec_iterator_options_destroyPtr
+      .asFunction<void Function(ffi.Pointer<zvec_iterator_options_t>)>();
+
+  /// @brief Set the scalar fields to return.
+  /// @param options Options handle
+  /// @param output_fields Array of field names; NULL means return all fields
+  /// @param count Number of entries in output_fields. If output_fields is
+  /// non-NULL and count is 0, no scalar fields are returned (only
+  /// the primary key / system columns).
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_iterator_options_set_output_fields(
+    ffi.Pointer<zvec_iterator_options_t> options,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> output_fields,
+    int count,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_iterator_options_set_output_fields(
+      options,
+      output_fields,
+      count,
+    ));
+  }
+
+  late final _zvec_iterator_options_set_output_fieldsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              ffi.Pointer<zvec_iterator_options_t>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.Size)>>('zvec_iterator_options_set_output_fields');
+  late final _zvec_iterator_options_set_output_fields =
+      _zvec_iterator_options_set_output_fieldsPtr.asFunction<
+          int Function(ffi.Pointer<zvec_iterator_options_t>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>, int)>();
+
+  /// @brief Set whether to include vector fields in the returned documents.
+  /// @param options Options handle
+  /// @param include true to include vectors, false to skip them
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_iterator_options_set_include_vector(
+    ffi.Pointer<zvec_iterator_options_t> options,
+    bool include,
+  ) {
+    return zvec_error_code_t
+        .fromValue(_zvec_iterator_options_set_include_vector(
+      options,
+      include,
+    ));
+  }
+
+  late final _zvec_iterator_options_set_include_vectorPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_iterator_options_t>,
+              ffi.Bool)>>('zvec_iterator_options_set_include_vector');
+  late final _zvec_iterator_options_set_include_vector =
+      _zvec_iterator_options_set_include_vectorPtr.asFunction<
+          int Function(ffi.Pointer<zvec_iterator_options_t>, bool)>();
+
+  /// @brief Create a document iterator over the collection.
+  ///
+  /// Takes an isolated snapshot at call time. On a writable collection this
+  /// seals the current writing segment (each call may produce a new small
+  /// segment); read-only collections are scanned without any write.
+  /// While any iterator is open, schema changes (create/drop index,
+  /// add/alter/drop column) and destroy return an error, and optimize fails
+  /// at its start; conversely this call fails while a maintenance operation
+  /// (optimize, schema DDL or destroy) is running. Flush, writes and queries
+  /// are not affected.
+  /// zvec_collection_close() only releases the handle: the collection
+  /// itself closes when the last handle is released, waiting for any open
+  /// iterators first, so close every iterator (zvec_doc_iterator_close)
+  /// before releasing the last collection handle.
+  /// @param collection Collection handle
+  /// @param options Iterator options (may be NULL to use defaults)
+  /// @param[out] out_iter Returned iterator handle (release with
+  /// zvec_doc_iterator_close)
+  /// @return zvec_error_code_t Error code
+  zvec_error_code_t zvec_collection_create_iterator(
+    ffi.Pointer<zvec_collection_t> collection,
+    ffi.Pointer<zvec_iterator_options_t> options,
+    ffi.Pointer<ffi.Pointer<zvec_doc_iterator_t>> out_iter,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_collection_create_iterator(
+      collection,
+      options,
+      out_iter,
+    ));
+  }
+
+  late final _zvec_collection_create_iteratorPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.UnsignedInt Function(
+                  ffi.Pointer<zvec_collection_t>,
+                  ffi.Pointer<zvec_iterator_options_t>,
+                  ffi.Pointer<ffi.Pointer<zvec_doc_iterator_t>>)>>(
+      'zvec_collection_create_iterator');
+  late final _zvec_collection_create_iterator =
+      _zvec_collection_create_iteratorPtr.asFunction<
+          int Function(
+              ffi.Pointer<zvec_collection_t>,
+              ffi.Pointer<zvec_iterator_options_t>,
+              ffi.Pointer<ffi.Pointer<zvec_doc_iterator_t>>)>();
+
+  /// @brief Advance the iterator and return the next document.
+  /// @param iter Iterator handle
+  /// @param[out] out_doc Returned document (release with zvec_doc_destroy).
+  /// Set to NULL when iteration reaches the end (EOF).
+  /// @return zvec_error_code_t ZVEC_OK on success or EOF; error code otherwise.
+  zvec_error_code_t zvec_doc_iterator_next(
+    ffi.Pointer<zvec_doc_iterator_t> iter,
+    ffi.Pointer<ffi.Pointer<zvec_doc_t>> out_doc,
+  ) {
+    return zvec_error_code_t.fromValue(_zvec_doc_iterator_next(
+      iter,
+      out_doc,
+    ));
+  }
+
+  late final _zvec_doc_iterator_nextPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(ffi.Pointer<zvec_doc_iterator_t>,
+              ffi.Pointer<ffi.Pointer<zvec_doc_t>>)>>('zvec_doc_iterator_next');
+  late final _zvec_doc_iterator_next = _zvec_doc_iterator_nextPtr.asFunction<
+      int Function(ffi.Pointer<zvec_doc_iterator_t>,
+          ffi.Pointer<ffi.Pointer<zvec_doc_t>>)>();
+
+  /// @brief Close the iterator and release all its resources.
+  /// @param iter Iterator handle (may be NULL).
+  void zvec_doc_iterator_close(
+    ffi.Pointer<zvec_doc_iterator_t> iter,
+  ) {
+    return _zvec_doc_iterator_close(
+      iter,
+    );
+  }
+
+  late final _zvec_doc_iterator_closePtr = _lookup<
+          ffi
+          .NativeFunction<ffi.Void Function(ffi.Pointer<zvec_doc_iterator_t>)>>(
+      'zvec_doc_iterator_close');
+  late final _zvec_doc_iterator_close = _zvec_doc_iterator_closePtr
+      .asFunction<void Function(ffi.Pointer<zvec_doc_iterator_t>)>();
 
   /// @brief Create a new document object
   ///
@@ -7781,6 +8811,13 @@ final class zvec_log_config_t extends ffi.Opaque {}
 
 final class zvec_config_data_t extends ffi.Opaque {}
 
+/// @brief I/O backend type codes for DiskAnn disk reads.
+///
+/// Defined as uint32_t constants for consistent binary representation
+/// across C and C++ boundaries.
+typedef zvec_io_backend_type_t = ffi.Uint32;
+typedef Dartzvec_io_backend_type_t = int;
+
 final class zvec_collection_t extends ffi.Opaque {}
 
 final class zvec_index_params_t extends ffi.Opaque {}
@@ -7814,11 +8851,15 @@ final class zvec_hnsw_query_params_t extends ffi.Opaque {}
 
 final class zvec_ivf_query_params_t extends ffi.Opaque {}
 
+final class zvec_ivf_rabitq_query_params_t extends ffi.Opaque {}
+
 final class zvec_flat_query_params_t extends ffi.Opaque {}
 
 final class zvec_fts_query_params_t extends ffi.Opaque {}
 
 final class zvec_vamana_query_params_t extends ffi.Opaque {}
+
+final class zvec_diskann_query_params_t extends ffi.Opaque {}
 
 final class zvec_vector_query_t extends ffi.Opaque {}
 
@@ -7858,6 +8899,10 @@ final class zvec_write_result_t extends ffi.Struct {
   /// < Per-document status message (allocated by API)
   external ffi.Pointer<ffi.Char> message;
 }
+
+final class zvec_doc_iterator_t extends ffi.Opaque {}
+
+final class zvec_iterator_options_t extends ffi.Opaque {}
 
 /// @brief Document field value union
 final class zvec_field_value_t extends ffi.Union {
@@ -7930,6 +8975,14 @@ enum zvec_doc_operator_t {
       };
 }
 
+const int ZVEC_IO_BACKEND_TYPE_PREAD = 0;
+
+const int ZVEC_IO_BACKEND_TYPE_LIBAIO = 1;
+
+const int ZVEC_IO_BACKEND_TYPE_IO_URING = 2;
+
+const int ZVEC_IO_BACKEND_TYPE_WINDOWS_OVERLAPPED = 3;
+
 const int ZVEC_DATA_TYPE_UNDEFINED = 0;
 
 const int ZVEC_DATA_TYPE_BINARY = 1;
@@ -7966,6 +9019,8 @@ const int ZVEC_DATA_TYPE_VECTOR_INT8 = 26;
 
 const int ZVEC_DATA_TYPE_VECTOR_INT16 = 27;
 
+const int ZVEC_DATA_TYPE_VECTOR_UINT8 = 28;
+
 const int ZVEC_DATA_TYPE_SPARSE_VECTOR_FP16 = 30;
 
 const int ZVEC_DATA_TYPE_SPARSE_VECTOR_FP32 = 31;
@@ -7996,7 +9051,13 @@ const int ZVEC_INDEX_TYPE_IVF = 2;
 
 const int ZVEC_INDEX_TYPE_FLAT = 3;
 
+const int ZVEC_INDEX_TYPE_HNSW_RABITQ = 4;
+
+const int ZVEC_INDEX_TYPE_DISKANN = 5;
+
 const int ZVEC_INDEX_TYPE_VAMANA = 6;
+
+const int ZVEC_INDEX_TYPE_IVF_RABITQ = 7;
 
 const int ZVEC_INDEX_TYPE_INVERT = 10;
 
@@ -8019,3 +9080,5 @@ const int ZVEC_QUANTIZE_TYPE_FP16 = 1;
 const int ZVEC_QUANTIZE_TYPE_INT8 = 2;
 
 const int ZVEC_QUANTIZE_TYPE_INT4 = 3;
+
+const int ZVEC_QUANTIZE_TYPE_RABITQ = 4;

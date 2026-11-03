@@ -1,90 +1,60 @@
-# 从源码构建 Zvec Dart SDK
+# 开发 Zvec Dart SDK
 
-> English version: [BUILDING.md](BUILDING.md)
+[English](BUILDING.md)
 
-> ⚠️ 终端用户**不需要**从源码构建 —— `flutter pub add zvec` 即可。下面的步骤面向想要修改插件或重新编译原生库的 SDK 贡献者。
+使用包含 Dart 3.4.4 或更高 3.x 版本的 Flutter SDK，按 Flutter 的要求安装目标平台的构建工具。Apple 平台需要 Xcode 和 CocoaPods。
 
-## 前置条件
+## 准备仓库
 
-| 工具         | 最低版本    | 安装方式                                                |
-| ------------ | ----------- | ------------------------------------------------------- |
-| Flutter      | ≥ 3.3.0     | <https://docs.flutter.dev/get-started/install>          |
-| Dart SDK     | ≥ 3.4.4     | 随 Flutter 自带                                          |
-| Android SDK  | API 21+     | Android Studio → SDK Manager                            |
-| Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
-| CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |
-| Xcode        | ≥ 15.0      | Mac App Store（仅 iOS/macOS 需要）                        |
-| CocoaPods    | ≥ 1.15      | `sudo gem install cocoapods`                            |
-| Visual Studio| 2022+       | Windows 桌面端构建需要                                   |
-
-## 1. 克隆仓库（含子模块）
-
-```bash
-git clone --recursive https://github.com/zvec-ai/zvec-dart.git
+```sh
+git clone https://github.com/zvec-ai/zvec-dart.git
 cd zvec-dart
-# 如果忘了 --recursive：
-git submodule update --init --recursive
-```
-
-> 上游 zvec 的 C/C++ 源码以 git submodule 形式集成在 `third_party/zvec/`。
-
-## 2. 安装 Dart 依赖
-
-```bash
 flutter pub get
 (cd example && flutter pub get)
 ```
 
-## 3. 编译原生库
+## 运行测试
 
-```bash
-# 一键编译当前宿主可构建的目标
-bash scripts/build_all.sh
-
-# 只编译 Android —— 产物：android/src/main/jniLibs/<abi>/libzvec.so
-bash scripts/build_android.sh arm64-v8a
-
-# 只编译 iOS —— 产物：ios/zvec.framework/
-bash scripts/build_ios.sh OS               # 真机 (arm64)
-bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon 模拟器（可选）
-
-# 只编译 macOS 桌面端 —— 产物：macos/zvec_native.framework/
-bash scripts/build_macos.sh
-
-# 只编译 Linux 桌面端 —— 产物：linux/lib/libzvec.so
-bash scripts/build_linux.sh
-
-# 只编译 Windows 桌面端 —— 产物：windows/lib/zvec.dll
-powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+```sh
+flutter test test/zvec_test.dart   # 纯 Dart 测试
+bash scripts/run_tests.sh         # 包含原生 FFI 测试
 ```
 
-## 4. 运行测试
+测试脚本在 macOS 和 Linux 上会自动下载本机 SDK。在 Windows 上或需要测试指定的 0.8.0 原生库时，将 `ZVEC_LIBRARY_PATH` 设为动态库的绝对路径，再执行 `flutter test`。原生测试覆盖引擎版本、集合读写、向量查询和使用内嵌词典的中文全文检索。
 
-```bash
-flutter test test/zvec_test.dart
-```
+## 运行 Flutter 示例
 
-## 5. 运行示例 App
-
-```bash
+```sh
 cd example
-flutter run -d <device-id>          # Android、iOS、macOS、Linux 或 Windows
-# iOS 首次运行：
-(cd ios && pod install)
+flutter create --platforms=macos .    # 替换成要运行的平台
+flutter run -d <device-id>
 ```
 
-## 6. 不发布地验证 release
+仓库缺少目标平台的示例工程时，先运行一次 `flutter create`。检查生成的 Podfile 和 Runner 工程，iOS 部署目标至少为 14.0，macOS 至少为 11.0。构建时，Gradle、CocoaPods 或 CMake 会下载对应平台的官方 SDK，并按固定的 SHA-256 校验值验证压缩包。可用 `ZVEC_SDK_CACHE` 指向共享缓存目录，复用已校验的压缩包。[平台支持说明](PLATFORM_SUPPORT.md)
 
-推送版本 tag 之前，先从 GitHub Actions 手动运行 dry-run release workflow。它会构建所有 release 原生产物，执行 `dart pub publish --dry-run`，用这些产物构建 example app，并运行桌面端 release smoke test，但不会创建 GitHub Release，也不会发布到 pub.dev。
+## 更新 C API 绑定
 
-```bash
-gh workflow run 1-build-and-release.yml --ref main -f version=v0.6.0
+[版本清单](tool/zvec_sdk.json)记录了上游版本、各平台压缩包和校验值。更新清单后，使用 libclang 和项目依赖的 ffigen，从同一版 SDK 的头文件生成绑定。
+
+```sh
+dart tool/fetch_zvec.dart --headers
+dart run ffigen --config ffigen.yaml
 ```
 
-`version` 必须和 `pubspec.yaml` 以及各平台 package version 文件一致。
+如需手动检查一个平台的完整 SDK，可从清单中选择目标平台，下载到空目录。
 
-## 7. 重新生成 FFI 绑定（上游 C API 变动时）
+```sh
+dart tool/fetch_zvec.dart --target linux-amd64 --output build/zvec-sdk/linux-amd64
+```
 
-```bash
-dart run ffigen
+## 检查 pub 包
+
+```sh
+dart pub publish --dry-run
+```
+
+发布前可手动运行[发布工作流](.github/workflows/1-build-and-release.yml)中的 dry run。
+
+```sh
+gh workflow run 1-build-and-release.yml --ref main -f version=v0.8.0
 ```
