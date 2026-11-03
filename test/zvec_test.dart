@@ -25,6 +25,7 @@ void main() {
       expect(DataType.fromValue(2), DataType.string);
       expect(DataType.fromValue(5), DataType.int64);
       expect(DataType.fromValue(23), DataType.vectorFp32);
+      expect(DataType.fromValue(28), DataType.vectorUint8);
       expect(DataType.fromValue(9999), DataType.undefined);
     });
 
@@ -32,6 +33,7 @@ void main() {
       expect(DataType.vectorFp32.isDenseVector, isTrue);
       expect(DataType.vectorFp64.isDenseVector, isTrue);
       expect(DataType.vectorInt8.isDenseVector, isTrue);
+      expect(DataType.vectorUint8.isDenseVector, isTrue);
       expect(DataType.string.isDenseVector, isFalse);
       expect(DataType.int64.isDenseVector, isFalse);
     });
@@ -62,6 +64,9 @@ void main() {
       expect(IndexType.fromValue(1), IndexType.hnsw);
       expect(IndexType.fromValue(2), IndexType.ivf);
       expect(IndexType.fromValue(3), IndexType.flat);
+      expect(IndexType.fromValue(5), IndexType.diskAnn);
+      expect(IndexType.fromValue(6), IndexType.vamana);
+      expect(IndexType.fromValue(7), IndexType.ivfRabitq);
       expect(IndexType.fromValue(10), IndexType.invert);
       expect(IndexType.fromValue(999), IndexType.undefined);
     });

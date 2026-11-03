@@ -1,14 +1,5 @@
-// The Android Gradle Plugin builds the native code with the Android NDK.
-
 group = "com.alibaba.zvec"
-version = "0.5.2"
-
-// ---------------------------------------------------------------------------
-// Zvec native library version — update this when releasing a new version.
-// The prebuilt .so files are downloaded from GitHub Releases at build time.
-// ---------------------------------------------------------------------------
-def ZVEC_VERSION = "0.5.2"
-def ZVEC_GITHUB_BASE = "https://github.com/zvec-ai/zvec-dart/releases/download/v${ZVEC_VERSION}"
+version = "0.8.0"
 
 buildscript {
     repositories {
@@ -17,7 +8,6 @@ buildscript {
     }
 
     dependencies {
-        // The Android Gradle Plugin knows how to build native code with the NDK.
         classpath("com.android.tools.build:gradle:8.11.1")
     }
 }
@@ -31,92 +21,44 @@ rootProject.allprojects {
 
 apply plugin: "com.android.library"
 
+def sdkDir = layout.buildDirectory.dir("zvec-sdk/android-arm64")
+def cApi = sdkDir.map { it.file("lib/libzvec_c_api.so") }
+def jniDir = layout.buildDirectory.dir("generated/zvec/jniLibs")
+
 android {
     namespace = "com.alibaba.zvec"
-
-    // Bumping the plugin compileSdk version requires all clients of this plugin
-    // to bump the version in their app.
     compileSdk = 36
 
-    // Use the NDK version
-    // declared in /android/app/build.gradle file of the Flutter project.
-    // Replace it with a version number if this plugin requires a specific NDK version.
-    // (e.g. ndkVersion "23.1.7779620")
-    ndkVersion = android.ndkVersion
-
-    // Invoke the shared CMake build with the Android Gradle Plugin.
-    externalNativeBuild {
-        cmake {
-            path = "../src/CMakeLists.txt"
-
-            // The default CMake version for the Android Gradle Plugin is 3.10.2.
-            // https://developer.android.com/studio/projects/install-ndk#vanilla_cmake
-            //
-            // The Flutter tooling requires that developers have CMake 3.10 or later
-            // installed. You should not increase this version, as doing so will cause
-            // the plugin to fail to compile for some customers of the plugin.
-            // version "3.10.2"
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     defaultConfig {
-        minSdk = 21
-
+        minSdk = 28
         ndk {
-            // Only arm64-v8a is supported. armeabi-v7a is disabled because
-            // upstream zvec cmake unconditionally appends -march=armv8 flags.
             abiFilters 'arm64-v8a'
         }
     }
+
+    sourceSets.main.jniLibs.setSrcDirs([jniDir])
 }
 
-// ---------------------------------------------------------------------------
-// Download prebuilt libzvec.so from GitHub Releases
-// ---------------------------------------------------------------------------
-def jniLibsDir = "$projectDir/src/main/jniLibs"
+def flutterProperties = new Properties()
+def propertiesFile = rootProject.file("local.properties")
+if (propertiesFile.isFile()) {
+    propertiesFile.withInputStream { flutterProperties.load(it) }
+}
+def flutterRoot = flutterProperties.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_ROOT")
+def dartBinary = System.getProperty("os.name").startsWith("Windows") ? "dart.exe" : "dart"
+def dartCommand = flutterRoot ? new File(flutterRoot, "bin/cache/dart-sdk/bin/${dartBinary}") : dartBinary
+def fetchScript = file("../tool/fetch_zvec.dart")
 
-def zipFiles = [
-    'arm64-v8a'  : "${ZVEC_GITHUB_BASE}/libzvec-android-arm64-v8a.zip",
-]
-
-task downloadZvecNativeLibs {
-    description = 'Download prebuilt libzvec.so for each ABI from GitHub Releases'
-    doLast {
-        zipFiles.each { abi, url ->
-            def libDir = file("$jniLibsDir/$abi")
-            def libFile = file("$libDir/libzvec.so")
-            if (!libFile.exists()) {
-                def tmpDir = file("$buildDir/tmp")
-                tmpDir.mkdirs()
-                def zipFile = file("$tmpDir/zvec-${abi}.zip")
-
-                libDir.mkdirs()
-
-                println "Downloading libzvec.so for $abi ..."
-                println "  URL: $url"
-                new URL(url).withInputStream { i ->
-                    zipFile.withOutputStream { it << i }
-                }
-
-                println "Extracting to $libDir"
-                copy {
-                    from zipTree(zipFile)
-                    into libDir
-                    include "*.so"
-                }
-
-                delete zipFile
-                println "Done: $libFile (${libFile.length() / 1024 / 1024} MB)"
-            } else {
-                println "libzvec.so for $abi already exists, skipping download"
-            }
-        }
-    }
+def fetchZvec = tasks.register("fetchZvecSdk", Exec) {
+    inputs.files(fetchScript, file("../tool/zvec_sdk.json"))
+    outputs.file(cApi)
+    commandLine dartCommand, fetchScript, "--target", "android-arm64", "--output", sdkDir.get().asFile
 }
 
-preBuild.dependsOn downloadZvecNativeLibs
+def stageZvec = tasks.register("stageZvecNativeLibs", Sync) {
+    dependsOn fetchZvec
+    from(cApi) { into("arm64-v8a") }
+    into(jniDir)
+}
+
+tasks.named("preBuild").configure { dependsOn stageZvec }

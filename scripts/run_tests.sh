@@ -1,46 +1,25 @@
-#!/bin/bash
-# =============================================================================
-# run_tests.sh — Run Dart unit tests with the macOS native library
-#
-# Usage:
-#   bash scripts/run_tests.sh [ARGS...]
-#
-# Examples:
-#   bash scripts/run_tests.sh                                # run all tests
-#   bash scripts/run_tests.sh test/zvec_native_test.dart     # specific file
-#   bash scripts/run_tests.sh --name "Doc"                   # filter by name
-#   bash scripts/run_tests.sh test/zvec_test.dart            # pure-Dart only
-#
-# Notes:
-#   This script sets ZVEC_LIBRARY_PATH to an absolute path so that
-#   ZvecLibrary._openLibrary() can locate the macOS-built native library.
-#   (DYLD_LIBRARY_PATH is stripped by macOS SIP in child processes.)
-#   If the dylib does not exist, it will prompt you to build it first.
-# =============================================================================
-set -e
+#!/usr/bin/env bash
+# Run the Dart/FFI suite with the pinned upstream SDK.
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DYLIB_DIR="$PROJECT_ROOT/build/macos"
-DYLIB_PATH="$DYLIB_DIR/libzvec.dylib"
-
-# ---------------------------------------------------------------------------
-# Check that the native library exists
-# ---------------------------------------------------------------------------
-if [ ! -f "$DYLIB_PATH" ]; then
-    echo "Error: $DYLIB_PATH not found"
-    echo ""
-    echo "Build the macOS native library first:"
-    echo "  bash scripts/build_macos.sh"
-    exit 1
+if [[ -z "${ZVEC_LIBRARY_PATH:-}" ]]; then
+  case "$(uname -m)" in
+    arm64|aarch64) arch=arm64 ;;
+    x86_64|amd64) arch=amd64 ;;
+    *) echo "Unsupported host architecture: $(uname -m)" >&2; exit 1 ;;
+  esac
+  case "$(uname -s)" in
+    Darwin) target="osx-$arch"; library=libzvec_c_api.dylib ;;
+    Linux)
+      target="linux-$arch"
+      libc=$(ldd --version 2>&1 || true)
+      if [[ "$libc" == *musl* ]]; then target="linux-musl-$arch"; fi
+      library=libzvec_c_api.so ;;
+    *) echo "Set ZVEC_LIBRARY_PATH to the native C API library for this host." >&2; exit 1 ;;
+  esac
+  sdk="$PWD/build/zvec-sdk/$target"
+  dart tool/fetch_zvec.dart --target "$target" --output "$sdk"
+  export ZVEC_LIBRARY_PATH="$sdk/lib/$library"
 fi
-
-echo "Using native library: $DYLIB_PATH"
-echo "  Type: $(file "$DYLIB_PATH" | sed 's|.*: ||')"
-echo ""
-
-# ---------------------------------------------------------------------------
-# Run tests
-# ---------------------------------------------------------------------------
-cd "$PROJECT_ROOT"
-ZVEC_LIBRARY_PATH="$DYLIB_PATH" flutter test "$@"
+exec flutter test "$@"

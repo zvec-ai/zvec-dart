@@ -1,3 +1,10 @@
+## 0.8.0
+
+* Use SHA-256-pinned C API binaries from the official Zvec v0.8.0 release on Android, iOS, macOS, Linux and Windows.
+* Raise the Android minimum to API 28 and the macOS deployment target to 11.0. iOS 14+ supports arm64 devices and simulators. The macOS framework contains arm64 and x86_64 slices.
+* **Breaking** — remove `ConfigData.setJiebaDictDir`, `ConfigData.jiebaDictDir`, `Zvec.setDefaultJiebaDictDir` and `Zvec.defaultJiebaDictDir`. Chinese FTS uses the embedded dictionary. Use `FtsIndexParams.extraParams` for a field-specific dictionary or additional vocabulary.
+* Regenerate the FFI bindings for 0.8.0, recognize UINT8 vectors and additional index types, and map the existing Dart `groupTopk` argument to the renamed C API.
+
 ## 0.5.2
 
 * Add Flutter desktop support for macOS, Linux, and Windows.

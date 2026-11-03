@@ -6,6 +6,7 @@ import 'package:zvec/zvec.dart';
 
 void main() {
   test('published package loads native library and runs a vector query', () {
+    expect([Zvec.versionMajor, Zvec.versionMinor, Zvec.versionPatch], [0, 8, 0]);
     Zvec.initialize();
     final dir = Directory.systemTemp.createTempSync('zvec_release_smoke_');
 

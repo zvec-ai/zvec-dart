@@ -32,6 +32,7 @@ enum DataType {
   vectorInt4(25),
   vectorInt8(26),
   vectorInt16(27),
+  vectorUint8(28),
   sparseVectorFp16(30),
   sparseVectorFp32(31),
   arrayBinary(40),
@@ -48,7 +49,7 @@ enum DataType {
   final int value;
 
   /// Whether this type represents a dense vector.
-  bool get isDenseVector => value >= 20 && value <= 27;
+  bool get isDenseVector => value >= 20 && value <= 28;
 
   /// Whether this type represents a sparse vector.
   bool get isSparseVector => value >= 30 && value <= 31;
@@ -72,6 +73,9 @@ enum IndexType {
   ivf(2),
   flat(3),
   hnswRabitq(4),
+  diskAnn(5),
+  vamana(6),
+  ivfRabitq(7),
   invert(10),
   fts(11);
 

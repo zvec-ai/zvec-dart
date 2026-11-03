@@ -1,94 +1,60 @@
-# Building Zvec Dart SDK from Source
+# Developing the Zvec Dart SDK
 
-> 中文版：[BUILDING_zh.md](BUILDING_zh.md)
+[中文版](BUILDING_zh.md)
 
-> ⚠️ End users do **not** need to build from source — `flutter pub add zvec` is enough. The steps below are for SDK contributors who want to hack on the plugin or rebuild the native libraries.
+Use Flutter with Dart 3.4.4 or later in the 3.x series. Install the usual Flutter build tools for your target. Apple builds use Xcode and CocoaPods.
 
-## Prerequisites
+## Set up the repository
 
-| Tool         | Min Version | Where                                                   |
-| ------------ | ----------- | ------------------------------------------------------- |
-| Flutter      | ≥ 3.3.0     | <https://docs.flutter.dev/get-started/install>          |
-| Dart SDK     | ≥ 3.4.4     | bundled with Flutter                                    |
-| Android SDK  | API 21+     | Android Studio → SDK Manager                            |
-| Android NDK  | 27.x+       | Android Studio → SDK Manager → SDK Tools                |
-| CMake        | ≥ 3.10      | Android Studio → SDK Manager → SDK Tools                |
-| Xcode        | ≥ 15.0      | Mac App Store (iOS/macOS only)                          |
-| CocoaPods    | ≥ 1.15      | `sudo gem install cocoapods`                            |
-| Visual Studio| 2022+       | Required for Windows desktop builds                     |
-
-## 1. Clone (with submodules)
-
-```bash
-git clone --recursive https://github.com/zvec-ai/zvec-dart.git
+```sh
+git clone https://github.com/zvec-ai/zvec-dart.git
 cd zvec-dart
-# If you forgot --recursive:
-git submodule update --init --recursive
-```
-
-> Upstream zvec C/C++ source is vendored as a git submodule at `third_party/zvec/`.
-
-## 2. Install Dart deps
-
-```bash
 flutter pub get
 (cd example && flutter pub get)
 ```
 
-## 3. Build native libraries
+## Run the tests
 
-```bash
-# All supported targets for the current host in one go
-bash scripts/build_all.sh
-
-# Android only — output: android/src/main/jniLibs/<abi>/libzvec.so
-bash scripts/build_android.sh arm64-v8a
-
-# iOS only — output: ios/zvec.framework/
-bash scripts/build_ios.sh OS               # device (arm64)
-bash scripts/build_ios.sh SIMULATORARM64   # Apple Silicon simulator (optional)
-
-# macOS desktop — output: macos/zvec_native.framework/
-bash scripts/build_macos.sh
-
-# Linux desktop — output: linux/lib/libzvec.so
-bash scripts/build_linux.sh
-
-# Windows desktop — output: windows/lib/zvec.dll
-powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+```sh
+flutter test test/zvec_test.dart   # Pure Dart
+bash scripts/run_tests.sh         # Includes native FFI tests
 ```
 
-## 4. Run tests
+The test script fetches the host SDK on macOS and Linux. For Windows or to test a specific 0.8.0 library, set `ZVEC_LIBRARY_PATH` to its absolute path when running `flutter test`. The native suite checks the engine version, writes and reads collections, runs vector queries and exercises Chinese FTS with the embedded dictionary.
 
-```bash
-flutter test test/zvec_test.dart
-```
+## Run the Flutter example
 
-## 5. Run the example app
-
-```bash
+```sh
 cd example
-flutter run -d <device-id>          # Android, iOS, macOS, Linux, or Windows
-# iOS first time only:
-(cd ios && pod install)
+flutter create --platforms=macos .    # Use your target's platform name
+flutter run -d <device-id>
 ```
 
-## 6. Verify a release without publishing
+Generate the runner once for a platform missing from the checkout. In the Apple Podfile and Runner project, set the deployment target to iOS 14.0 or macOS 11.0 or later. During a Flutter build, Gradle, CocoaPods or CMake fetches the official SDK archive and verifies its pinned SHA-256 digest. `ZVEC_SDK_CACHE` can point to a shared directory of verified archives. [Platform requirements](PLATFORM_SUPPORT.md)
 
-Before pushing a version tag, run the manual dry-run release workflow from
-GitHub Actions. It builds all release native artifacts, runs `dart pub publish
---dry-run`, builds the example apps from those artifacts, and runs desktop
-release smoke tests without creating a GitHub Release or publishing to pub.dev.
+## Update the C API bindings
 
-```bash
-gh workflow run 1-build-and-release.yml --ref main -f version=v0.6.0
+The SDK tag, archive names and checksums are pinned in [the release manifest](tool/zvec_sdk.json). After updating the manifest, generate the Dart bindings from the matching release header using libclang and the project's ffigen dependency.
+
+```sh
+dart tool/fetch_zvec.dart --headers
+dart run ffigen --config ffigen.yaml
 ```
 
-The `version` value must match `pubspec.yaml` and the platform package version
-files.
+To fetch a full SDK for manual inspection, choose a target key from the manifest and an empty output directory.
 
-## 7. Regenerate FFI bindings (when the upstream C API changes)
+```sh
+dart tool/fetch_zvec.dart --target linux-amd64 --output build/zvec-sdk/linux-amd64
+```
 
-```bash
-dart run ffigen
+## Check the pub package
+
+```sh
+dart pub publish --dry-run
+```
+
+For release verification, run the manual dry run in the [release workflow](.github/workflows/1-build-and-release.yml).
+
+```sh
+gh workflow run 1-build-and-release.yml --ref main -f version=v0.8.0
 ```

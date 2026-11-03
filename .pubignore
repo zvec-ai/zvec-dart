@@ -1,34 +1,19 @@
-# .pubignore — Controls what gets published to pub.dev
-# This OVERRIDES .gitignore for `dart pub publish`.
-#
-# Native libraries are NOT bundled in the pub.dev package.
-# They are downloaded at build time from GitHub Releases:
-#   - Android: build.gradle `downloadZvecNativeLibs` task
-#   - iOS:     podspec `prepare_command` (curl + unzip)
-
-# === Exclude from pub.dev package ===
-
-# zvec source code (users don't need to compile)
+# Native SDKs are downloaded during the consumer's build.
 third_party/
-
-# Build scripts (only for SDK developers)
-scripts/
-patches/
-
-# Build intermediates
-/build/
+build/
 tmp/
-assets/jieba_dict/.gitkeep
-
-# Prebuilt native libraries (downloaded at build time, not shipped in package)
+assets/jieba_dict/
 android/src/main/jniLibs/
 ios/zvec.framework/
-linux/lib/
+ios/.zvec-sdk/
 macos/zvec.framework/
 macos/zvec_native.framework/
+macos/.zvec-sdk/
+linux/lib/
 windows/lib/
 
-# Dev files
+.dart_tool/
+.flutter-plugins-dependencies
 .git/
 .github/
 .gitmodules
@@ -36,15 +21,16 @@ windows/lib/
 .idea/
 .vscode/
 *.iml
-
-# Example app's generated files
+scripts/
+test/
+pubspec.lock
 example/.dart_tool/
-example/build/
-example/ios/Pods/
-example/ios/.symlinks/
+example/.flutter-plugins-dependencies
+example/ios/
+example/macos/
+example/linux/
+example/windows/
 example/android/.gradle/
-example/android/build/
-
-# Docs (not needed in the package)
-RELEASE_PIPELINE.md
+example/android/local.properties
+example/android/key.properties
 README_zh.md

@@ -24,16 +24,13 @@
 
 ---
 
-**Zvec Dart SDK** brings Alibaba's open-source [Zvec](https://github.com/alibaba/zvec) vector engine to Flutter and Dart via `dart:ffi` — no servers, no IPC, just a single dynamic library running in your app's process. Build on-device and desktop semantic search, RAG, recommendation, and similarity workloads with milliseconds-level latency.
+**Zvec Dart SDK** embeds the Zvec vector database in Flutter applications through `dart:ffi`. It supports vector search, filtered queries, full-text search and local persistent collections.
 
-## 💫 Features
+## Features
 
-- **🚀 Native speed** — Direct FFI calls into a battle-tested C++ engine; no method-channel hops, no isolate marshalling.
-- **📱 Mobile + desktop** — Ships prebuilt binaries for **Android**, **iOS**, **macOS**, **Linux**, and **Windows**.
-- **☁️ Zero-friction install** — Native libs are auto-fetched from GitHub Releases at build time. Your `pub.dev` package stays slim.
-- **🧠 Rich vector ops** — HNSW / IVF / Flat / Inverted indexes, hybrid filters, top-k & group-by queries.
-- **🔒 Durable storage** — Write-ahead log, atomic flush, persistent across app restarts.
-- **🎯 Idiomatic Dart** — Strongly-typed schema, exception-based error handling, synchronous API.
+- Search HNSW, IVF and Flat indexes, filter on scalar fields, and combine vector and full-text results.
+- Create typed schemas, insert documents and run synchronous queries through the C API.
+- Persist collections across restarts with a write-ahead log and explicit flush.
 
 ## 📦 Installation
 
@@ -41,22 +38,15 @@
 flutter pub add zvec
 ```
 
-Or in `pubspec.yaml`:
+To pin the 0.8 series, use `zvec: ^0.8.0` in your `pubspec.yaml`.
 
-```yaml
-dependencies:
-  zvec: ^0.5.1
-```
+The first Flutter build downloads the target's prebuilt C API library from the official Zvec release and verifies its SHA-256 checksum. Set Android `minSdk` to 28 or higher, the iOS deployment target to 14.0 or higher, and the macOS deployment target to 11.0 or higher. The macOS framework contains both Intel and Apple Silicon binaries. [Platform support](PLATFORM_SUPPORT.md) · [Upstream SDK archives](https://github.com/alibaba/zvec/releases/tag/v0.8.0)
 
-> **Platform support**
->
-> | Platform | Architectures      | Distribution                                 |
-> | -------- | ------------------ | -------------------------------------------- |
-> | Android  | arm64-v8a          | Gradle task `downloadZvecNativeLibs`          |
-> | iOS      | arm64 (device)     | CocoaPods `prepare_command` (curl + unzip)   |
-> | macOS    | arm64              | CocoaPods `prepare_command` (curl + unzip)   |
-> | Linux    | x64                | Flutter desktop CMake download + bundle      |
-> | Windows  | x64                | Flutter desktop CMake download + bundle      |
+## Upgrading from 0.5.x
+
+- The engine now embeds its default Jieba dictionary and HMM model. Remove calls to `ConfigData.setJiebaDictDir` and `Zvec.setDefaultJiebaDictDir`, along with reads of `jiebaDictDir` and `defaultJiebaDictDir`. `FtsIndexParams(tokenizerName: 'jieba')` enables Chinese FTS with the embedded defaults.
+- To supply a custom dictionary directory, pass `jieba_dict_dir` in the JSON string accepted by `FtsIndexParams.extraParams`. Use `user_dict_path` to add domain vocabulary. A process-level `ZVEC_JIEBA_DICT_DIR` also supplies a default directory for fields that have no override. [Upstream migration notes](https://zvec.org/en/blog/2026-10-20-zvec-release/#upgrade-notes)
+- The `GroupByVectorQuery` constructor still accepts `groupTopk` for the maximum number of hits per group.
 
 ## ⚡ Quick Start
 
@@ -113,23 +103,9 @@ void main() {
 
 A full Flutter demo lives in [`example/lib/main.dart`](example/lib/main.dart).
 
-## 🧬 How Native Libraries Are Distributed
+## Contributing
 
-Native libraries are **NOT bundled in the pub.dev tarball** — they're fetched on first build:
-
-| Platform | Mechanism | Trigger |
-| -------- | --------- | ------- |
-| Android  | Gradle task `downloadZvecNativeLibs` (`android/build.gradle`) | `flutter build apk` / `flutter run` |
-| iOS      | `prepare_command` in `ios/zvec.podspec` (curl + unzip)        | `pod install` |
-| macOS    | `prepare_command` in `macos/zvec.podspec` (curl + unzip)      | `pod install` |
-| Linux    | `linux/CMakeLists.txt` downloads and bundles `libzvec.so`      | `flutter build linux` / `flutter run -d linux` |
-| Windows  | `windows/CMakeLists.txt` downloads and bundles `zvec.dll`      | `flutter build windows` / `flutter run -d windows` |
-
-This keeps the Dart package small and lets us version native binaries independently.
-
-## 🤝 Contributing
-
-Issues and pull requests are welcome! Want to hack on the plugin or rebuild the native libraries? See **[BUILDING.md](BUILDING.md)** for the developer setup. For changes that touch the underlying engine, please file them in the [upstream zvec repo](https://github.com/alibaba/zvec) instead.
+To run the tests or regenerate bindings, see the [developer guide](BUILDING.md).
 
 ## 📄 License
 

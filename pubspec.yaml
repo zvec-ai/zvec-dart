@@ -1,7 +1,8 @@
 name: zvec
 description: "Dart SDK for Zvec — a lightweight, lightning-fast, in-process vector database by Alibaba."
-version: 0.5.2
+version: 0.8.0
 homepage: https://github.com/alibaba/zvec
+repository: https://github.com/zvec-ai/zvec-dart
 
 environment:
   sdk: '>=3.4.4 <4.0.0'
@@ -11,7 +12,6 @@ dependencies:
   ffi: ^2.1.3
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.0.2
 
 dev_dependencies:
   ffigen: ^15.0.0
@@ -19,31 +19,12 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.2
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
-  # This section identifies this Flutter project as a plugin project.
-  # The 'pluginClass' specifies the class (in Java, Kotlin, Swift, Objective-C, etc.)
-  # which should be registered in the plugin registry. This is required for
-  # using method channels.
-  # The Android 'package' specifies package in which the registered class is.
-  # This is required for using method channels on Android.
-  # The 'ffiPlugin' specifies that native code should be built and bundled.
-  # This is required for using `dart:ffi`.
-  # All these are used by the tooling to maintain consistency when
-  # adding or updating assets for this project.
-  #
-  # Please refer to README.md for a detailed explanation.
   plugin:
     platforms:
       android:
-        package: com.alibaba.zvec
-        pluginClass: ZvecPlugin
         ffiPlugin: true
       ios:
-        pluginClass: ZvecPlugin
         ffiPlugin: true
       linux:
         ffiPlugin: true
@@ -51,26 +32,3 @@ flutter:
         ffiPlugin: true
       windows:
         ffiPlugin: true
-
-  assets:
-    - assets/jieba_dict/
-
-  # To add custom fonts to your plugin package, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts in packages, see
-  # https://flutter.dev/to/font-from-package

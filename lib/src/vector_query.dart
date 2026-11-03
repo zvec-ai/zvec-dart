@@ -341,7 +341,9 @@ class GroupByVectorQuery {
 
     // Set group parameters
     checkError(_b.zvec_group_by_vector_query_set_group_count(_ptr, groupCount));
-    checkError(_b.zvec_group_by_vector_query_set_group_topk(_ptr, groupTopk));
+    checkError(
+      _b.zvec_group_by_vector_query_set_topk_per_group(_ptr, groupTopk),
+    );
 
     // Set filter
     if (filter != null) {

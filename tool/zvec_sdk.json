@@ -1,0 +1,46 @@
+{
+  "version": "0.8.0",
+  "baseUrl": "https://github.com/alibaba/zvec/releases/download",
+  "assets": {
+    "android-arm64": {
+      "file": "zvec-sdk-android-arm64.tar.gz",
+      "sha256": "e375bcbd547e83907ef7cd94bc5336c2471b62ba7508184cceccf8b59d735dd7"
+    },
+    "ios": {
+      "file": "zvec-sdk-ios.zip",
+      "sha256": "c02e55aa550ce385b409ae78a4bff983de44fe41baebf6879b76136f3e57a6c3"
+    },
+    "linux-amd64": {
+      "file": "zvec-sdk-linux-amd64.tar.gz",
+      "sha256": "bc7097a293ec1677ac84c46e76afef880359766cd1e1cdf2494ef669237b134a"
+    },
+    "linux-arm64": {
+      "file": "zvec-sdk-linux-arm64.tar.gz",
+      "sha256": "0055f8135d121d51365edd216429f281341fa47a36a96dec60ddac28b60d0c3b"
+    },
+    "linux-musl-amd64": {
+      "file": "zvec-sdk-linux-musl-amd64.tar.gz",
+      "sha256": "98779b81a0c2c3845336b8f5da8203908116bbf55275805ae9124779e786dc20"
+    },
+    "linux-musl-arm64": {
+      "file": "zvec-sdk-linux-musl-arm64.tar.gz",
+      "sha256": "63a6de61342524f2c7a9320c1046da9f9dfad4f46248371d7dc7e5aa830c5d8c"
+    },
+    "osx-amd64": {
+      "file": "zvec-sdk-osx-amd64.tar.gz",
+      "sha256": "c758501846b17ad2696ea44bbd99859fe0b312ec837b1eeecff310cff75c7b83"
+    },
+    "osx-arm64": {
+      "file": "zvec-sdk-osx-arm64.tar.gz",
+      "sha256": "5f0828e5bf5b0dc11754cc039f43a9de161e2daea5d088e1d48f8effd278d1fc"
+    },
+    "windows-amd64": {
+      "file": "zvec-sdk-windows-amd64.zip",
+      "sha256": "7fc16b1bf575d3300f4ae4728f09a6a096b67025d508c350c16302c665ccbbe8"
+    },
+    "windows-arm64": {
+      "file": "zvec-sdk-windows-arm64.zip",
+      "sha256": "43d61816a37b71380e4552f45759e206b57e4b54993f7e8da57d65a466d031e5"
+    }
+  }
+}
