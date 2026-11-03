@@ -5,6 +5,11 @@ analyzer:
     - build/**
     - tmp/**
     - third_party/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
