@@ -16,6 +16,21 @@ permissions:
   contents: read
 
 jobs:
+  publish-preflight:
+    if: ${{ !inputs.hosted_version }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Check publish preflight
+        run: |
+          flutter --version
+          flutter pub get
+          git diff --exit-code -- analysis_options.yaml example/analysis_options.yaml
+          dart pub publish --dry-run
+
   sdk-floor:
     if: ${{ !inputs.hosted_version }}
     runs-on: ubuntu-latest
